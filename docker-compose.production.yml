@@ -1,0 +1,347 @@
+# Production Docker Compose with Worker Resilience
+# CRITICAL FIX: Production-grade configuration with auto-restart and health monitoring
+version: "3.9"
+
+services:
+  # Main Application Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_PROFILE=${BUILD_PROFILE:-enterprise}
+        - REQUIREMENTS_FILE=requirements-enterprise.txt
+    image: devsecurex-backend:production
+    container_name: devsecurex-main
+    restart: always  # CRITICAL: Always restart on failure
+    
+    # CRITICAL FIX: Production command with health monitoring
+    command: ["python", "/app/start.py"]
+    
+    ports:
+      - "${PORT:-8080}:8080"
+    
+    environment:
+      # Production environment
+      - APP_ENV=production
+      - ENVIRONMENT=production
+      - PORT=8080
+      
+      # Database configuration with production pools
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_POOL_SIZE=50
+      - DB_MAX_OVERFLOW=100
+      - DB_POOL_TIMEOUT=180
+      - DB_POOL_RECYCLE=7200
+      - DB_POOL_PRE_PING=true
+      
+      # Redis configuration with production settings
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_MAX_CONNECTIONS=100
+      - REDIS_SOCKET_TIMEOUT=120
+      - REDIS_SOCKET_CONNECT_TIMEOUT=60
+      
+      # Worker configuration for production
+      - ENABLE_BACKGROUND_WORKERS=false  # Managed separately
+      - USE_FORTRESS_QUEUES=true
+      - SCAN_WORKERS=0  # Workers run separately
+      - AUTOFIX_WORKERS=0
+      
+      # Health monitoring
+      - ENABLE_WORKER_HEALTH_MONITORING=true
+      - WORKER_HEARTBEAT_TIMEOUT=300
+      - DEAD_WORKER_THRESHOLD=600
+      - WORKER_AUTO_RESTART=true
+      - MAX_WORKER_RESTARTS=5
+      
+      # Production security
+      - SECRET_KEY=${SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    
+    # CRITICAL FIX: Resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    
+    # CRITICAL FIX: Enhanced health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    networks:
+      - production-network
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Unified Workers (Scan Processing)
+  worker-unified-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_PROFILE=${BUILD_PROFILE:-enterprise}
+        - REQUIREMENTS_FILE=requirements-enterprise.txt
+    image: devsecurex-backend:production
+    container_name: devsecurex-worker-unified-1
+    restart: always  # CRITICAL: Always restart workers
+    
+    command: ["python", "-m", "scans.unified_queue.worker_startup", "--worker-id", "unified-1"]
+    
+    environment:
+      # Worker environment
+      - APP_ENV=production
+      - WORKER_ID=unified-1
+      - WORKER_TYPE=unified
+      
+      # Database and Redis (same as main app)
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      
+      # Worker-specific configuration
+      - UNIFIED_WORKER_POLL_INTERVAL=2
+      - WORKER_HEARTBEAT_INTERVAL=30
+      - ENABLE_AI_DURING_SCAN=true
+      
+      # Security
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    
+    # Resource limits for workers
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    
+    # CRITICAL FIX: Worker health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; r=redis.from_url('${REDIS_URL}'); r.ping()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    networks:
+      - production-network
+    
+    depends_on:
+      - backend
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  worker-unified-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_PROFILE=${BUILD_PROFILE:-enterprise}
+        - REQUIREMENTS_FILE=requirements-enterprise.txt
+    image: devsecurex-backend:production
+    container_name: devsecurex-worker-unified-2
+    restart: always
+    
+    command: ["python", "-m", "scans.unified_queue.worker_startup", "--worker-id", "unified-2"]
+    
+    environment:
+      - APP_ENV=production
+      - WORKER_ID=unified-2
+      - WORKER_TYPE=unified
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - UNIFIED_WORKER_POLL_INTERVAL=2
+      - WORKER_HEARTBEAT_INTERVAL=30
+      - ENABLE_AI_DURING_SCAN=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; r=redis.from_url('${REDIS_URL}'); r.ping()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    networks:
+      - production-network
+    
+    depends_on:
+      - backend
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Autofix Worker
+  worker-autofix-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_PROFILE=${BUILD_PROFILE:-enterprise}
+        - REQUIREMENTS_FILE=requirements-enterprise.txt
+    image: devsecurex-backend:production
+    container_name: devsecurex-worker-autofix-1
+    restart: always
+    
+    command: ["python", "-m", "scans.autofix_queue.worker_startup", "--worker-id", "autofix-1"]
+    
+    environment:
+      - APP_ENV=production
+      - WORKER_ID=autofix-1
+      - WORKER_TYPE=autofix
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - AUTOFIX_WORKER_POLL_INTERVAL=5
+      - WORKER_HEARTBEAT_INTERVAL=30
+      - ENABLE_EVENT_DRIVEN_WORKERS=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    
+    # Autofix workers need more resources
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; r=redis.from_url('${REDIS_URL}'); r.ping()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    networks:
+      - production-network
+    
+    depends_on:
+      - backend
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Worker Health Monitor (Standalone Service)
+  worker-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_PROFILE=${BUILD_PROFILE:-enterprise}
+        - REQUIREMENTS_FILE=requirements-enterprise.txt
+    image: devsecurex-backend:production
+    container_name: devsecurex-worker-monitor
+    restart: always
+    
+    command:
+      - python
+      - -c
+      - |
+        import asyncio
+        from core.worker_health_monitor import start_worker_health_monitoring
+        asyncio.run(start_worker_health_monitoring())
+
+    
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - WORKER_MONITOR_INTERVAL=30
+      - WORKER_HEARTBEAT_TIMEOUT=300
+      - DEAD_WORKER_THRESHOLD=600
+      - WORKER_AUTO_RESTART=true
+      - MAX_WORKER_RESTARTS=5
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; r=redis.from_url('${REDIS_URL}'); r.ping()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    networks:
+      - production-network
+    
+    depends_on:
+      - backend
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  production-network:
+    driver: bridge
+    name: devsecurex-production
+
+# CRITICAL FIX: Volume configuration for production persistence
+volumes:
+  worker_logs:
+    driver: local
+  health_logs:
+    driver: local

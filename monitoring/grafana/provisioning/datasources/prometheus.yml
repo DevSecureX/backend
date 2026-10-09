@@ -1,0 +1,41 @@
+# DevSecureX Grafana Datasource Configuration
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    uid: prometheus-uid
+    jsonData:
+      httpMethod: POST
+      queryTimeout: 30s
+      timeInterval: 15s
+      exemplarTraceIdDestinations:
+        - name: traceID
+          datasourceUid: jaeger-uid
+    secureJsonData: {}
+    
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    uid: jaeger-uid
+    editable: true
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki-uid
+        tags: [
+          {key: 'service.name', value: 'service'},
+          {key: 'service.namespace', value: 'namespace'}
+        ]
+        
+  # Optional: Add Loki if you want log correlation
+  # - name: Loki
+  #   type: loki
+  #   access: proxy
+  #   url: http://loki:3100
+  #   uid: loki-uid
+  #   editable: true

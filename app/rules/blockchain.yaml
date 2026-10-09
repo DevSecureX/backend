@@ -1,0 +1,83 @@
+rules:
+  - id: compound-borrowfresh-reentrancy
+    patterns:
+      - pattern: |
+          function borrowFresh(...) {
+            ...
+            doTransferOut(...);
+            $STATE_UPDATE;
+            ...
+          }
+    message: Function borrowFresh() in Compound performs state update after doTransferOut, potentially leading to reentrancy.
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-364: Signal Handler Race Condition"
+      references:
+        - description: Based on Compound, Ola Finance, Hundred Finance, Agave exploits
+
+  - id: erc20-public-transfer
+    patterns:
+      - pattern: |
+          function _transfer(...) public {
+            ...
+          }
+    message: Custom ERC20 implementation exposes _transfer() as public, allowing unauthorized transfers.
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - description: Based on Creat Future exploit
+
+  - id: array-length-outside-loop
+    patterns:
+      - pattern-not: |
+          uint256 length = $ARRAY.length;
+          for (uint256 i = 0; i < length; i++) {
+            ...
+          }
+      - pattern: |
+          for (uint256 i = 0; i < $ARRAY.length; i++) {
+            ...
+          }
+    message: Caching the array length outside a loop saves gas by avoiding repeated length reads, as long as the array's length is not changed during the loop.
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: gas-optimization
+      references:
+        - description: Gas optimization rule for smart contracts
+
+  - id: unrestricted-transferownership
+    patterns:
+      - pattern: |
+          function transferOwnership(...) public {
+            ...
+            owner = $NEW_OWNER;
+            ...
+          }
+    message: Contract ownership can be transferred by anyone, lacking access control.
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - description: Based on Ragnarok Online Invasion exploit
+
+  - id: use-custom-error-not-require
+    patterns:
+      - pattern: require($CONDITION, "$ERROR_MESSAGE");
+    message: Consider using custom errors instead of require for gas efficiency, allowing detailed NatSpec descriptions.
+    fix: |
+      error CustomError();
+      if (!$CONDITION) revert CustomError();
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: gas-optimization
+      references:
+        - description: Gas optimization rule for smart contracts

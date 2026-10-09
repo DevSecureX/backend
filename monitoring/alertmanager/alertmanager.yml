@@ -1,0 +1,253 @@
+# DevSecureX Alertmanager Configuration
+# Alert routing and notification management
+
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@devsecurex.local'
+  smtp_auth_username: 'alertmanager@devsecurex.local'
+  smtp_auth_password: 'your-smtp-password'
+  resolve_timeout: 5m
+
+# Inhibition rules allow to mute a set of alerts given that another alert is firing
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service', 'instance']
+    
+  - source_match:
+      alertname: 'SystemHealthCritical'
+    target_match_re:
+      alertname: '(DatabaseConnectionPoolExhausted|CacheHitRateLow|HighResponseTime)'
+    equal: ['service']
+
+# Route tree for alert notifications
+route:
+  group_by: ['alertname', 'service', 'phase']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-receiver'
+  
+  routes:
+    # Critical system alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+      
+    # Phase-specific routing
+    - match:
+        phase: '1'  # Database optimization alerts
+      receiver: 'database-team'
+      group_by: ['alertname', 'service']
+      
+    - match:
+        phase: '2'  # Redis/Caching optimization alerts  
+      receiver: 'cache-team'
+      group_by: ['alertname', 'cache_type']
+      
+    - match:
+        phase: '3'  # API performance alerts
+      receiver: 'api-team'
+      group_by: ['alertname', 'endpoint']
+      
+    - match:
+        phase: '4'  # Task system alerts
+      receiver: 'task-team'
+      group_by: ['alertname', 'worker_type']
+      
+    - match:
+        phase: '5'  # SLA compliance alerts
+      receiver: 'sla-team'
+      group_by: ['alertname', 'sla_type']
+      
+    # Security-specific alerts
+    - match:
+        category: security
+      receiver: 'security-team'
+      group_wait: 5s
+      repeat_interval: 30m
+      
+    # Resource utilization alerts
+    - match:
+        category: resources
+      receiver: 'infrastructure-team'
+      group_by: ['alertname', 'instance']
+      
+    # Warning level alerts
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      repeat_interval: 8h
+
+# Notification receivers
+receivers:
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'devops@devsecurex.com'
+        subject: '[DevSecureX] Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Severity: {{ .Labels.severity }}
+          
+          Details:
+          {{ range .Labels.SortedPairs }}
+          - {{ .Name }}: {{ .Value }}
+          {{ end }}
+          {{ end }}
+          
+          Dashboard: http://localhost:3000
+          Prometheus: http://localhost:9090
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'critical-alerts@devsecurex.com'
+        subject: '[CRITICAL] DevSecureX Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          🚨 CRITICAL ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Phase: {{ .Labels.phase }}
+          
+          Runbook: {{ .Annotations.runbook_url }}
+          
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          {{ end }}
+    # Add webhook for critical alerts (Slack, PagerDuty, etc.)
+    webhook_configs:
+      - url: 'http://localhost:8010/monitoring/alerts/webhook'
+        send_resolved: true
+
+  - name: 'database-team'
+    email_configs:
+      - to: 'database-team@devsecurex.com'
+        subject: '[DB] Phase 1 Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Database Optimization (Phase 1) Alert
+          
+          {{ range .Alerts }}
+          Issue: {{ .Annotations.summary }}
+          Details: {{ .Annotations.description }}
+          Pool: {{ .Labels.pool_name }}
+          
+          Dashboard: http://localhost:3000/d/devsecurex-database-performance
+          {{ end }}
+
+  - name: 'cache-team'
+    email_configs:
+      - to: 'cache-team@devsecurex.com'
+        subject: '[CACHE] Phase 2 Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Cache Optimization (Phase 2) Alert
+          
+          {{ range .Alerts }}
+          Issue: {{ .Annotations.summary }}
+          Details: {{ .Annotations.description }}
+          Cache Type: {{ .Labels.cache_type }}
+          
+          Dashboard: http://localhost:3000/d/devsecurex-redis-caching
+          {{ end }}
+
+  - name: 'api-team'
+    email_configs:
+      - to: 'api-team@devsecurex.com'
+        subject: '[API] Phase 3 Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          API Performance (Phase 3) Alert
+          
+          {{ range .Alerts }}
+          Issue: {{ .Annotations.summary }}
+          Details: {{ .Annotations.description }}
+          Endpoint: {{ .Labels.endpoint }}
+          
+          Dashboard: http://localhost:3000/d/devsecurex-system-overview
+          {{ end }}
+
+  - name: 'task-team'
+    email_configs:
+      - to: 'task-team@devsecurex.com'
+        subject: '[TASKS] Phase 4 Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Task System (Phase 4) Alert
+          
+          {{ range .Alerts }}
+          Issue: {{ .Annotations.summary }}
+          Details: {{ .Annotations.description }}
+          Worker Type: {{ .Labels.worker_type }}
+          
+          Dashboard: http://localhost:3000/d/devsecurex-task-system
+          {{ end }}
+
+  - name: 'sla-team'
+    email_configs:
+      - to: 'sla-team@devsecurex.com'
+        subject: '[SLA] Phase 5 Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          SLA Compliance (Phase 5) Alert
+          
+          {{ range .Alerts }}
+          Issue: {{ .Annotations.summary }}
+          Details: {{ .Annotations.description }}
+          SLA Type: {{ .Labels.sla_type }}
+          
+          Dashboard: http://localhost:3000/d/devsecurex-sla-compliance
+          {{ end }}
+
+  - name: 'security-team'
+    email_configs:
+      - to: 'security-team@devsecurex.com'
+        subject: '[SECURITY] DevSecureX Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          🔒 Security Alert 🔒
+          
+          {{ range .Alerts }}
+          Issue: {{ .Annotations.summary }}
+          Details: {{ .Annotations.description }}
+          Scan Type: {{ .Labels.scan_type }}
+          Tool: {{ .Labels.tool }}
+          
+          Dashboard: http://localhost:3000/d/devsecurex-security-scanning
+          {{ end }}
+
+  - name: 'infrastructure-team'
+    email_configs:
+      - to: 'infrastructure@devsecurex.com'
+        subject: '[INFRA] Resource Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Infrastructure Resource Alert
+          
+          {{ range .Alerts }}
+          Issue: {{ .Annotations.summary }}
+          Details: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          
+          Dashboard: http://localhost:3000/d/system-resources
+          {{ end }}
+
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'monitoring@devsecurex.com'
+        subject: '[WARNING] DevSecureX: {{ .GroupLabels.alertname }}'
+        body: |
+          Warning Level Alert
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          
+          Please investigate when convenient.
+          {{ end }}
+
+# Templates for customizing notification content
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

@@ -1,0 +1,71 @@
+# ---- Secrets & environment ----
+.env
+.env.*
+!.env.example
+*.env
+secrets/
+keys/
+certs/
+service-account-key.json
+gcp-key.json
+*credentials*.json
+*.pem
+*.p12
+*.pfx
+id_rsa*
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+
+# ---- Virtual environments ----
+venv/
+.venv/
+env/
+ENV/
+
+# ---- Testing & coverage ----
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# ---- Logs & local data ----
+*.log
+logs/
+*.db
+*.sqlite
+*.sqlite3
+dump.rdb
+
+# ---- Backups & archives ----
+*.bak
+*.backup
+*.tar.gz
+backups/
+
+# ---- Docker / compose overrides ----
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ---- IDE & OS ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,292 @@
+rules:
+  # Existing rules (keep all original rules)
+  - id: array-length-outside-loop
+    languages: [solidity]
+    severity: WARNING
+    message: Array length accessed inside loop - cache it outside for gas optimization
+    patterns:
+      - pattern-inside: |
+          for (...; ...; ...) {
+            ...
+          }
+      - pattern: $ARRAY.length
+    fix: |
+      uint256 length = array.length;
+      for (uint i = 0; i < length; i++) { ... }
+
+  - id: compound-borrowfresh-reentrancy
+    languages: [solidity]
+    severity: ERROR
+    message: Potential reentrancy in borrowFresh function
+    patterns:
+      - pattern: |
+          function borrowFresh(...) {
+            ...
+            $TRANSFER(...)
+            ...
+            $STATE = ...
+            ...
+          }
+    metadata:
+      references:
+        - https://www.comp.xyz/t/security-patch-compound-finance/1747
+
+  - id: erc20-public-transfer
+    languages: [solidity]
+    severity: ERROR
+    message: Internal _transfer function should not be public
+    pattern: function _transfer(...) public { ... }
+    fix: Change visibility to internal or private
+
+  - id: unrestricted-transferownership
+    languages: [solidity]
+    severity: ERROR
+    message: transferOwnership lacks access control
+    patterns:
+      - pattern: |
+          function transferOwnership(...) {
+            ...
+          }
+      - pattern-not: |
+          function transferOwnership(...) {
+            require(msg.sender == owner, ...);
+            ...
+          }
+
+  - id: use-custom-error-not-require
+    languages: [solidity]
+    severity: WARNING
+    message: Use custom errors instead of require for gas optimization
+    pattern: require(..., "...")
+    fix: |
+      error CustomError();
+      if (condition) revert CustomError();
+
+  # NEW ENHANCED RULES
+
+  - id: unprotected-selfdestruct
+    languages: [solidity]
+    severity: CRITICAL
+    message: Unprotected selfdestruct can destroy contract
+    patterns:
+      - pattern: selfdestruct(...)
+      - pattern-not-inside: |
+          require(msg.sender == owner);
+          ...
+    fix: Add proper access control or use alternative patterns
+    metadata:
+      cwe: CWE-284
+      owasp: A01:2021
+
+  - id: unchecked-external-call
+    languages: [solidity]
+    severity: CRITICAL
+    message: External call return value not checked
+    pattern-either:
+      - pattern: $TARGET.call{...}(...)
+      - pattern: $TARGET.call(...)
+    pattern-not: |
+      (bool $SUCCESS, ...) = $TARGET.call...
+      require($SUCCESS, ...);
+    fix: Always check return values of external calls
+
+  - id: arbitrary-eth-transfer
+    languages: [solidity]
+    severity: CRITICAL
+    message: Arbitrary address can receive ETH - potential drain
+    pattern: |
+      function $FUNC(..., address $ADDR, ...) {
+        ...
+        $ADDR.transfer(...);
+        ...
+      }
+    pattern-not-inside: |
+      require($ADDR == owner || $ADDR == ...);
+    fix: Validate recipient addresses
+
+  - id: flashloan-attack-vector
+    languages: [solidity]
+    severity: HIGH
+    message: Function vulnerable to flashloan attacks
+    patterns:
+      - pattern-either:
+          - pattern: balanceOf(address(this))
+          - pattern: address(this).balance
+      - pattern-inside: |
+          function $FUNC(...) external {
+            ...
+          }
+    fix: Use flashloan-resistant patterns or add reentrancy guards
+
+  - id: price-oracle-manipulation
+    languages: [solidity]
+    severity: CRITICAL
+    message: Price oracle vulnerable to manipulation
+    pattern-either:
+      - pattern: IUniswapV2Pair(...).getReserves()
+      - pattern: $PAIR.price0CumulativeLast()
+    pattern-not-inside: |
+      require(block.timestamp - $LASTUPDATED > $PERIOD);
+    fix: Use time-weighted average prices (TWAP) with sufficient periods
+
+  - id: uninitialized-storage-pointer
+    languages: [solidity]
+    severity: CRITICAL
+    message: Uninitialized storage pointer can overwrite storage
+    pattern: |
+      $TYPE $VAR;
+      $VAR = ...;
+    pattern-not: $TYPE memory $VAR;
+    fix: Explicitly declare as memory or storage
+
+  - id: weak-randomness
+    languages: [solidity]
+    severity: HIGH
+    message: Weak randomness source - predictable outcomes
+    pattern-either:
+      - pattern: block.timestamp
+      - pattern: block.number
+      - pattern: blockhash(...)
+    pattern-inside: |
+      $RANDOM = ... % ...
+    fix: Use Chainlink VRF or commit-reveal scheme
+
+  - id: front-running-vulnerability
+    languages: [solidity]
+    severity: HIGH
+    message: Function vulnerable to front-running attacks
+    patterns:
+      - pattern: |
+          function $FUNC(...) public {
+            ...
+            require($AMOUNT <= $LIMIT);
+            ...
+          }
+      - pattern-not: commit-reveal pattern
+    fix: Implement commit-reveal or use flashloan protection
+
+  - id: integer-overflow-unchecked
+    languages: [solidity]
+    severity: HIGH
+    message: Potential integer overflow in unchecked block
+    pattern: |
+      unchecked {
+        ... + ...
+      }
+    fix: Validate bounds even in unchecked blocks for critical operations
+
+  - id: delegate-call-to-untrusted
+    languages: [solidity]
+    severity: CRITICAL
+    message: Delegatecall to untrusted contract
+    pattern: $TARGET.delegatecall(...)
+    pattern-not: |
+      require($TARGET == $TRUSTED);
+    fix: Only delegatecall to trusted, immutable addresses
+
+  - id: missing-slippage-protection
+    languages: [solidity]
+    severity: HIGH
+    message: DEX operation without slippage protection
+    pattern-either:
+      - pattern: swapExactTokensForTokens(..., 0, ...)
+      - pattern: swapExactETHForTokens{...}(0, ...)
+    fix: Calculate and use appropriate amountOutMin values
+
+  - id: approval-front-running
+    languages: [solidity]
+    severity: HIGH
+    message: ERC20 approval vulnerable to front-running
+    pattern: |
+      function approve(address spender, uint256 amount) {
+        _allowances[msg.sender][spender] = amount;
+        ...
+      }
+    fix: Use increaseAllowance/decreaseAllowance pattern
+
+  - id: signature-malleability
+    languages: [solidity]
+    severity: HIGH
+    message: Signature verification vulnerable to malleability
+    pattern: ecrecover(...)
+    pattern-not-inside: |
+      require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0);
+    fix: Validate s value to prevent signature malleability
+
+  - id: unsafe-erc721-transfer
+    languages: [solidity]
+    severity: HIGH
+    message: Using transferFrom instead of safeTransferFrom for NFTs
+    pattern: $NFT.transferFrom(...)
+    fix: Use safeTransferFrom to prevent NFT loss
+
+  - id: missing-pause-mechanism
+    languages: [solidity]
+    severity: WARNING
+    message: Critical function lacks emergency pause mechanism
+    patterns:
+      - pattern-either:
+          - pattern: function withdraw(...) 
+          - pattern: function transfer(...)
+          - pattern: function swap(...)
+      - pattern-not-inside: |
+          require(!paused, ...);
+    fix: Implement pausable pattern for emergency response
+
+  - id: sandwich-attack-vulnerable
+    languages: [solidity]
+    severity: HIGH
+    message: Function vulnerable to sandwich attacks
+    pattern: |
+      function $FUNC(...) {
+        ...
+        $ROUTER.swap...(...);
+        ...
+      }
+    pattern-not: |
+      require(block.timestamp <= deadline);
+    fix: Add deadline and slippage protection
+
+  - id: governance-attack-vector
+    languages: [solidity]
+    severity: HIGH
+    message: Governance function lacks timelock
+    pattern: |
+      function $GOVFUNC(...) onlyOwner {
+        ...
+      }
+    pattern-not-inside: |
+      require(block.timestamp >= unlockTime);
+    fix: Implement timelock for governance actions
+
+  - id: cross-chain-replay-attack
+    languages: [solidity]
+    severity: CRITICAL
+    message: Missing chain ID validation in signature
+    pattern: |
+      keccak256(abi.encodePacked(...))
+    pattern-not: |
+      keccak256(abi.encodePacked(..., block.chainid, ...))
+    fix: Include chain ID in signed messages
+
+  - id: unsafe-proxy-implementation
+    languages: [solidity]
+    severity: CRITICAL
+    message: Proxy implementation lacks proper initialization
+    pattern: |
+      contract $CONTRACT is Proxy {
+        ...
+      }
+    pattern-not: |
+      function initialize(...) initializer {
+        ...
+      }
+    fix: Use initializer pattern for proxy contracts
+
+  - id: yield-farming-vulnerability
+    languages: [solidity]
+    severity: HIGH
+    message: Reward calculation vulnerable to manipulation
+    pattern: |
+      rewards = ... * block.timestamp ...
+    fix: Use block-based reward distribution

@@ -1,0 +1,75 @@
+rules:
+  - id: pickles-in-torch-distributed
+    patterns:
+      - pattern-either:
+          - pattern: torch.distributed.broadcast_object_list(...)
+          - pattern: torch.distributed.all_gather_object(...)
+          - pattern: torch.distributed.gather_object(...)
+          - pattern: torch.distributed.scatter_object_list(...)
+    message: |
+      Functions reliant on pickle can result in arbitrary code execution in AI/ML pipelines, as seen in recent 2025 exploits on platforms like Hugging Face.
+      For more information, see https://blog.trailofbits.com/2021/03/15/never-a-dill-moment-exploiting-machine-learning-pickle-files/ and CVE-2025-1716.
+    languages: [python]
+    severity: WARNING
+
+  - id: pickles-in-numpy
+    patterns:
+      - pattern: numpy.load(..., allow_pickle=$VALUE)
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: (True|^\d*[1-9]\d*$)
+    message: |
+      Allowing pickle in NumPy load can lead to arbitrary code execution, common in ML data loading and still exploited in 2025 supply chain attacks.
+      Consider using safer serialization methods like safetensors.
+      For more information, see https://blog.trailofbits.com/2021/03/15/never-a-dill-moment-exploiting-machine-learning-pickle-files/ and recent Hugging Face incidents.
+    languages: [python]
+    severity: ERROR
+
+  - id: numpy-in-torch-datasets
+    patterns:
+      - pattern-either:
+          - pattern: |
+              class $X(Dataset):
+                ...
+                def __getitem__(...):
+                  ...
+                  np.random.randint(...)
+                  ...
+          - pattern: |
+              class $X(Dataset):
+                ...
+                def __getitem__(...):
+                  ...
+                  $Y = np.random.randint(...)
+                  ...
+    message: |
+      Using NumPy RNG inside Torch datasets can cause identical augmentations or reproducibility issues in ML training (fixed in modern PyTorch but persists in some TensorFlow/Keras setups).
+      Use Python or PyTorch built-in RNG instead.
+      See https://tanelp.github.io/posts/a-bug-that-plagues-thousands-of-open-source-ml-projects/ for details.
+    languages: [python]
+    severity: WARNING
+
+  - id: insecure-model-loading
+    patterns:
+      - pattern: torch.load(...)
+    message: |
+      Loading PyTorch models with torch.load can execute arbitrary code if the file is untrusted (e.g., backdoored ML models), even with weights_only=True in some cases (see CVE-2025-32434).
+      Use safetensors or validate sources.
+    languages: [python]
+    severity: HIGH
+
+  - id: unauthorized-llm-usage
+    patterns:
+      - pattern-either:
+          - pattern: import openai
+          - pattern: openai.ChatCompletion.create(...)
+          - pattern: import anthropic
+          - pattern: anthropic.Anthropic().messages.create(...)
+          - pattern: import cohere
+          - pattern: cohere.Client().generate(...)
+    message: |
+      Unauthorized use of external AI/LLM libraries or APIs detected, which may violate shadow AI policies or introduce data leakage risks.
+      Review and approve LLM integrations.
+      Inspired by Semgrep's Shadow AI ruleset.
+    languages: [python]
+    severity: WARNING

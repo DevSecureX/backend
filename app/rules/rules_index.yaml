@@ -1,0 +1,165 @@
+# DevSecureX Security Rules Index
+# World-class security detection rules for comprehensive code analysis
+
+version: "2.0"
+last_updated: "2024-01-09"
+
+rule_categories:
+  ai_ml:
+    description: "AI/ML security rules for PyTorch, TensorFlow, JAX, and ML pipelines"
+    files:
+      - ai.yaml           # Original 5 rules
+      - ai_enhanced.yaml  # Additional 20 rules
+    coverage:
+      - Model loading and deserialization
+      - Pickle vulnerabilities
+      - Dataset poisoning
+      - Federated learning attacks
+      - Differential privacy
+      - LLM/Shadow AI detection
+      - GPU memory security
+      - ML supply chain attacks
+
+  blockchain:
+    description: "Smart contract and blockchain security"
+    files:
+      - blockchain.yaml           # Original 5 rules
+      - blockchain_enhanced.yaml  # Additional 20 rules
+    coverage:
+      - Reentrancy vulnerabilities
+      - Flash loan attacks
+      - Price oracle manipulation
+      - Integer overflows
+      - Access control issues
+      - Signature vulnerabilities
+      - Cross-chain attacks
+      - DeFi-specific patterns
+
+  iot_embedded:
+    description: "IoT and embedded systems security"
+    files:
+      - iot.yaml           # Original 5 rules
+      - iot_enhanced.yaml  # Additional 22 rules
+    coverage:
+      - Buffer overflows
+      - Memory corruption
+      - Firmware security
+      - Hardware attacks
+      - Secure boot
+      - OTA updates
+      - Sensor validation
+      - Physical attack vectors
+
+  web3_frontend:
+    description: "Web3 and DApp frontend security"
+    files:
+      - web3.yaml  # 15 new rules
+    coverage:
+      - Private key exposure
+      - MetaMask integration
+      - Chain ID validation
+      - BigNumber handling
+      - IPFS security
+      - Transaction security
+      - Event listener management
+
+  cloud_native:
+    description: "Kubernetes, Docker, and cloud infrastructure"
+    files:
+      - cloud_native.yaml  # 20 new rules
+    coverage:
+      - Container security
+      - Kubernetes misconfigurations
+      - Service mesh security
+      - Terraform/IaC security
+      - Secrets management
+      - Network policies
+      - RBAC issues
+
+  api_security:
+    description: "REST, GraphQL, and gRPC API security"
+    files:
+      - api_security.yaml  # 16 new rules
+    coverage:
+      - GraphQL vulnerabilities
+      - JWT security
+      - Rate limiting
+      - CORS misconfigurations
+      - Injection attacks
+      - Authentication/Authorization
+      - API versioning
+
+statistics:
+  total_rules: 118
+  categories: 6
+  languages_covered:
+    - Python
+    - JavaScript/TypeScript
+    - Solidity
+    - C/C++
+    - Go
+    - Java
+    - Ruby
+    - PHP
+    - Rust
+    - YAML
+    - HCL (Terraform)
+    - Dockerfile
+
+severity_distribution:
+  critical: 35
+  high: 48
+  warning: 25
+  error: 10
+
+compliance_mappings:
+  owasp_top_10_2021:
+    - A01: Broken Access Control
+    - A02: Cryptographic Failures
+    - A03: Injection
+    - A04: Insecure Design
+    - A05: Security Misconfiguration
+    - A06: Vulnerable and Outdated Components
+    - A07: Identification and Authentication Failures
+    - A08: Software and Data Integrity Failures
+    - A09: Security Logging and Monitoring Failures
+    - A10: Server-Side Request Forgery (SSRF)
+
+  cwe_coverage:
+    - CWE-78: OS Command Injection
+    - CWE-79: Cross-site Scripting
+    - CWE-89: SQL Injection
+    - CWE-94: Code Injection
+    - CWE-119: Buffer Overflow
+    - CWE-200: Information Exposure
+    - CWE-284: Improper Access Control
+    - CWE-327: Broken Crypto
+    - CWE-502: Deserialization
+    - CWE-798: Hard-coded Credentials
+
+  frameworks:
+    - NIST Cybersecurity Framework
+    - ISO 27001/27002
+    - PCI DSS
+    - HIPAA
+    - SOC 2
+    - GDPR Article 32
+
+usage_guidelines:
+  scanning_recommendations:
+    - Use all rule files for comprehensive analysis
+    - Enable niche-specific rules based on project type
+    - Regularly update rules as new vulnerabilities emerge
+    - Customize severity based on deployment environment
+
+  performance_tips:
+    - Enable incremental scanning for large codebases
+    - Use file filtering for targeted scans
+    - Cache results for unchanged files
+    - Run in parallel with appropriate concurrency
+
+  integration:
+    - CI/CD pipeline integration recommended
+    - Pre-commit hooks for early detection
+    - IDE integration for real-time feedback
+    - API integration for automated workflows

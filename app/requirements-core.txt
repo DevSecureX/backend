@@ -1,0 +1,49 @@
+# Core FastAPI and server (Essential - ~500MB)
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+
+# Database & ORM - Production optimized
+sqlalchemy[asyncio]==2.0.41
+asyncpg==0.29.0
+alembic==1.14.0  # Database migrations
+
+# Auth & Security - Essential
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+PyJWT==2.10.1
+authlib==1.3.1
+cryptography==43.0.3
+
+# Redis caching with connection pooling
+redis[hiredis]==5.2.1
+
+# HTTP client with async support
+httpx[http2]==0.28.1
+
+# FastAPI forms and file handling
+python-multipart==0.0.20
+
+# Email validation
+email-validator==2.2.0
+
+# Essential utilities
+setuptools==75.6.0
+python-dotenv==1.0.1  # Environment variable management
+
+# Core security scanning tools (lightweight)
+semgrep==1.128.1
+bandit[toml]==1.7.9
+safety==3.2.7
+checkov==2.3.228
+
+# System monitoring and performance
+psutil==6.0.0
+
+# Production logging
+structlog==24.4.0  # Structured logging
+
+# Template engine for basic reporting
+jinja2==3.1.6
+
+# Production WSGI/ASGI server
+gunicorn==23.0.0

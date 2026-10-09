@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app-service:
+    environment:
+      - TESTING_MODE=true
+      - APP_ENV=testing
+      - RATE_LIMIT_LOGIN_ATTEMPTS=100
+      - RATE_LIMIT_LOGIN_WINDOW=60
+      - RATE_LIMIT_SIGNUP_ATTEMPTS=50
+      - RATE_LIMIT_SIGNUP_WINDOW=60
+      - RATE_LIMIT_PASSWORD_RESET_ATTEMPTS=30
+      - RATE_LIMIT_PASSWORD_RESET_WINDOW=60
+      - RATE_LIMIT_MAIL_LIST_ATTEMPTS=100
+      - RATE_LIMIT_MAIL_LIST_WINDOW=60
+      - DEBUG=true
+    ports:
+      - "8020:8010"  # Map container port 8010 to host port 8020

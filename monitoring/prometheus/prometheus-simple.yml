@@ -1,0 +1,44 @@
+# DevSecureX Prometheus Configuration - Simplified
+# Basic metrics collection for testing
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'devsecurex-monitoring'
+    environment: 'development'
+
+scrape_configs:
+  # Prometheus Self-Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    
+  # Node Exporter - System Metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    
+  # Redis Monitoring
+  - job_name: 'redis-monitoring'
+    static_configs:
+      - targets: ['redis-monitoring:6379']
+    scrape_interval: 15s
+
+  # DevSecureX Backend - Main Application Metrics
+  - job_name: 'devsecurex-backend'
+    static_configs:
+      - targets: ['192.168.65.254:8010']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    
+  # DevSecureX Backend - Detailed Monitoring
+  - job_name: 'devsecurex-monitoring'
+    static_configs:
+      - targets: ['192.168.65.254:8010']
+    metrics_path: '/monitoring/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s

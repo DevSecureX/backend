@@ -1,0 +1,121 @@
+# DevSecureX Docker Ignore File
+# Excludes 720MB+ of unnecessary files from Docker builds
+
+# MASSIVE DIRECTORIES - 724MB savings
+frontend/
+cli/
+scripts/
+!scripts/entrypoint.sh
+!scripts/startup_checks.sh
+
+# DEVELOPMENT AND TEST DIRECTORIES
+testing/
+tests/
+docs/
+.devcontainer/
+.git/
+.github/
+.vscode/
+.idea/
+
+# DOCUMENTATION FILES
+*.md
+README*
+CHANGELOG*
+LICENSE*
+CONTRIBUTING*
+
+# DEVELOPMENT PYTHON FILES
+# Include app directory and entry points
+!app/
+!start.py
+!start_fast.py
+
+# SPECIFIC FILES TO EXCLUDE
+oauth_debug.py
+verify_*.py
+debug_severity_fix.py
+create_test_secrets.sh
+scan_results.json
+render.yaml
+docker-compose*.yml
+
+# ENVIRONMENT AND SECRETS
+.env*
+!.env.example
+*.key
+*.pem
+*.cert
+*secret*
+*password*
+
+# DATABASE AND LOG FILES
+*.log
+*.db
+devsecurex.db
+
+# NODE.JS ARTIFACTS
+node_modules/
+package*.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PYTHON ARTIFACTS
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+mypy_cache/
+.dmypy.json
+dmypy.json
+*.egg-info/
+dist/
+build/
+
+# SYSTEM FILES
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# TEMPORARY FILES
+temp/
+tmp/
+*.tmp
+*.temp
+logs/
+
+# TEST FILES
+*.spec.*
+*.test.*
+test_*.py
+*_test.py
+pytest.ini
+tox.ini
+.nox/
+coverage.xml
+.coverage.*
+junit.xml
+
+# BUILD ARTIFACTS
+public/
+static/build/
+
+# LARGE JSON FILES
+*.json
+!app/**/*.json

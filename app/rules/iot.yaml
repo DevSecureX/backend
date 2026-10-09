@@ -1,0 +1,53 @@
+rules:
+  - id: insecure-strcpy
+    patterns:
+      - pattern: strcpy($DEST, $SRC);
+    message: Use of strcpy can lead to buffer overflows in firmware if SRC is larger than DEST. Use strncpy or safer alternatives in IoT embedded code.
+    languages: [c, cpp]
+    severity: HIGH
+    metadata:
+      category: security
+      cwe: "CWE-120: Buffer Copy without Checking Size of Input"
+
+  - id: insecure-gets
+    patterns:
+      - pattern: gets($BUF);
+    message: gets() does not check buffer size, leading to potential overflows in IoT device input handling. Use fgets() instead.
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-120: Buffer Copy without Checking Size of Input"
+
+  - id: sprintf-without-n
+    patterns:
+      - pattern: sprintf($DEST, $FMT, ...);
+    message: sprintf can overflow DEST buffer in firmware string formatting. Use snprintf for bounded copy in embedded systems.
+    languages: [c, cpp]
+    severity: HIGH
+    metadata:
+      category: security
+      cwe: "CWE-134: Use of Externally-Controlled Format String"
+
+  - id: hard-coded-credentials
+    patterns:
+      - pattern-either:
+          - pattern: char *password = "$PASS";
+          - pattern: const char *key = "$KEY";
+    message: Hard-coded credentials in firmware code can be extracted from IoT binaries. Use secure storage or env vars.
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+
+  - id: insecure-memcpy
+    patterns:
+      - pattern: memcpy($DEST, $SRC, $SIZE);
+      - pattern-not-inside: if ($SIZE <= sizeof($DEST)) { ... }
+    message: memcpy without size checks can cause overflows in IoT memory operations. Validate SIZE against DEST.
+    languages: [c, cpp]
+    severity: HIGH
+    metadata:
+      category: security
+      cwe: "CWE-119: Improper Restriction of Operations within the Bounds of a Memory Buffer"

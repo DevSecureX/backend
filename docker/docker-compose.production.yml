@@ -1,0 +1,48 @@
+# Production Simulation Docker Compose
+# This simulates the exact Render deployment environment locally
+version: "3.9"
+
+services:
+  backend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: devsecurex-backend-prod
+    ports:
+      - "10000:10000"  # Render uses PORT=10000
+    env_file:
+      - .env.production.local
+    environment:
+      # Force production environment
+      - APP_ENV=production
+      - TESTING_MODE=false
+      - PORT=10000
+      # Scan workers (same as Render)
+      - SCAN_WORKERS=2
+      - WORKER_TIMEOUT=3600
+      - LOG_LEVEL=INFO
+      - ENABLE_BACKGROUND_WORKERS=true
+      # Use external services (Neon + Upstash)
+      # These will be loaded from .env.production.local
+    networks:
+      - prod-network
+    # Health check matching Render configuration
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
+    # Resource limits similar to Render starter plan
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+networks:
+  prod-network:
+    driver: bridge

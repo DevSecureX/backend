@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevSecureX Security Analysis Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #1F2937;
+            --secondary-color: #374151;
+            --accent-color: #6B7280;
+            --success-color: #16A34A;
+            --warning-color: #CA8A04;
+            --danger-color: #7C2D12;
+            --text-primary: #111827;
+            --text-secondary: #4B5563;
+            --text-muted: #6B7280;
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F9FAFB;
+            --bg-accent: #F3F4F6;
+            --border-color: #E5E7EB;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            font-size: 14px;
+        }
+        
+        .header {
+            background: var(--bg-primary);
+            color: var(--primary-color);
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+        
+        .header-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header-row:last-child {
+            border-bottom: none;
+        }
+        
+        .header-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .header-value {
+            color: var(--primary-color);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        .security-overview {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .overview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .overview-header h2 {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .overall-score {
+            font-size: 2rem;
+            font-weight: 700;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+        }
+        
+        .overview-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+        
+        .stat-number {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-number.critical { color: var(--danger-color); }
+        .stat-number.high { color: #EA580C; }
+        .stat-number.medium { color: var(--warning-color); }
+        .stat-number.low { color: var(--accent-color); }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .scan-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background: var(--bg-secondary);
+        }
+        
+        .detail-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .score-section {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .score-section h2 {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        
+        .score-excellent { color: var(--success-color); }
+        .score-good { color: var(--primary-color); }
+        .score-warning { color: var(--warning-color); }
+        .score-danger { color: var(--danger-color); }
+        
+        .score-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .score-item {
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            padding: 1.25rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        
+        .score-item h4 {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .score-item .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .issues-section {
+            margin-bottom: 2rem;
+        }
+        
+        .issues-header {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px 8px 0 0;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0;
+        }
+        
+        .issues-header h2 {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .issues-stats {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .stat-badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid;
+        }
+        
+        .critical { 
+            background: #FEF3C7;
+            color: #92400E;
+            border-color: #92400E;
+        }
+        .high { 
+            background: #FED7AA;
+            color: #EA580C;
+            border-color: #EA580C;
+        }
+        .medium { 
+            background: #FEF3C7;
+            color: var(--warning-color);
+            border-color: var(--warning-color);
+        }
+        .low { 
+            background: #DBEAFE;
+            color: #0284C7;
+            border-color: #0284C7;
+        }
+        .info { 
+            background: var(--bg-secondary);
+            color: var(--text-muted);
+            border-color: var(--border-color);
+        }
+        
+        .issue-card {
+            background: var(--bg-primary);
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            margin: 0;
+            overflow: hidden;
+        }
+        
+        .issue-card:last-child {
+            border-bottom: none;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .issue-header {
+            padding: 1.5rem 2rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .issue-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+        
+        .issue-meta {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .issues-container {
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background: var(--bg-secondary);
+        }
+        
+        .issue-content {
+            padding: 2rem;
+        }
+        
+        .issue-description {
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            font-size: 0.95rem;
+        }
+        
+        .issue-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .detail-item {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .detail-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+        }
+        
+        .code-context {
+            background: var(--primary-color);
+            color: #E2E8F0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre;
+            border: 1px solid var(--border-color);
+        }
+        
+        .code-context div {
+            margin: 0;
+            padding: 2px 0;
+        }
+        
+        .ai-analysis {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .ai-analysis h2 {
+            color: var(--primary-color);
+            margin-bottom: 1.25rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .ai-content {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .metadata-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .footer {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 2rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        @media print {
+            .score-breakdown {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .issues-stats {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>DevSecureX Security Report</h1>
+            <div class="header-info">
+                <div class="header-row">
+                    <span class="header-label">Repository:</span>
+                    <span class="header-value">{{ scan.repo_full_name or 'N/A' }}</span>
+                </div>
+                <div class="header-row">
+                    <span class="header-label">Generated:</span>
+                    <span class="header-value">{{ current_date }}</span>
+                </div>
+                <div class="header-row">
+                    <span class="header-label">Scan ID:</span>
+                    <span class="header-value">{{ scan.scan_id[:8] }}...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Security Overview -->
+        <div class="security-overview">
+            <div class="overview-header">
+                <h2>Security Assessment</h2>
+                <div class="overall-score {% if scan.total_score >= 80 %}score-excellent{% elif scan.total_score >= 60 %}score-good{% elif scan.total_score >= 40 %}score-warning{% else %}score-danger{% endif %}">
+                    {{ scan.total_score }}/100
+                </div>
+            </div>
+            
+            <div class="overview-stats">
+                {% set critical_count = scan.issues|selectattr('severity', 'equalto', 'critical')|list|length %}
+                {% set high_count = scan.issues|selectattr('severity', 'equalto', 'high')|list|length %}
+                {% set medium_count = scan.issues|selectattr('severity', 'equalto', 'medium')|list|length %}
+                {% set low_count = scan.issues|selectattr('severity', 'equalto', 'low')|list|length %}
+                
+                <div class="stat-item">
+                    <span class="stat-number critical">{{ critical_count }}</span>
+                    <span class="stat-label">Critical</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number high">{{ high_count }}</span>
+                    <span class="stat-label">High</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number medium">{{ medium_count }}</span>
+                    <span class="stat-label">Medium</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number low">{{ low_count }}</span>
+                    <span class="stat-label">Low</span>
+                </div>
+            </div>
+            
+            <div class="scan-details">
+                <div class="detail-row">
+                    <span class="detail-label">Branch:</span>
+                    <span class="detail-value">{{ scan.branch or 'main' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Scan Duration:</span>
+                    <span class="detail-value">{{ scan.metadata.scan_duration if scan.metadata and scan.metadata.scan_duration else 'N/A' }}s</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Tools Used:</span>
+                    <span class="detail-value">{{ scan.metadata.tools_used|join(', ') if scan.metadata and scan.metadata.tools_used else 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Score -->
+        <div class="score-section">
+            <div class="score-header">
+                <div class="total-score {% if scan.total_score >= 80 %}score-excellent{% elif scan.total_score >= 60 %}score-good{% elif scan.total_score >= 40 %}score-warning{% else %}score-danger{% endif %}">
+                    {{ scan.total_score }}/100
+                </div>
+                <p>Overall Security Score</p>
+            </div>
+            
+            <div class="score-breakdown">
+                {% for category, score in scan.scores.items() %}
+                {% if score is not none %}
+                <div class="score-item">
+                    <h4>{{ category.replace('_', ' ').title() }}</h4>
+                    <div class="value">{{ "%.1f"|format(score) }}</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Issues Summary -->
+        <div class="issues-section">
+            <div class="issues-header">
+                <h2>Security Issues ({{ scan.issues|length }})</h2>
+                <div class="issues-stats">
+                    {% set issue_counts = {} %}
+                    {% for issue in scan.issues %}
+                        {% set _ = issue_counts.update({issue.severity: issue_counts.get(issue.severity, 0) + 1}) %}
+                    {% endfor %}
+                    
+                    {% for severity, count in issue_counts.items() %}
+                    <span class="stat-badge {{ severity.lower() }}">
+                        {{ count }} {{ severity.title() }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="issues-container">
+            <!-- Issues List -->
+            {% for issue in scan.issues[:20] %}
+            <div class="issue-card">
+                <div class="issue-header">
+                    <div class="issue-title">{{ issue.title }}</div>
+                    <div class="issue-meta">
+                        <span>{{ issue.tool.title() }}</span>
+                        <span>•</span>
+                        <span class="stat-badge {{ issue.severity.lower() }}">{{ issue.severity.title() }}</span>
+                        <span>•</span>
+                        <span>{{ issue.file_path }}</span>
+                        {% if issue.line_start %}
+                        <span>Line {{ issue.line_start }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="issue-content">
+                    <div class="issue-description">
+                        {{ issue.description }}
+                    </div>
+                    
+                    <div class="issue-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Category</div>
+                            <div class="detail-value">{{ issue.category.title() }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Rule ID</div>
+                            <div class="detail-value">{{ issue.rule_id }}</div>
+                        </div>
+                        {% if issue.cwe_id %}
+                        <div class="detail-item">
+                            <div class="detail-label">CWE ID</div>
+                            <div class="detail-value">{{ issue.cwe_id }}</div>
+                        </div>
+                        {% endif %}
+                        {% if issue.confidence %}
+                        <div class="detail-item">
+                            <div class="detail-label">Confidence</div>
+                            <div class="detail-value">{{ issue.confidence }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Code Context Display -->
+                    {% if issue.code_context and issue.code_context['context_lines'] %}
+                    <div style="margin-top: 1rem;">
+                        <div class="detail-label" style="margin-bottom: 0.5rem;">Code Context</div>
+                        <div class="code-context">{% for line in issue.code_context['context_lines'] %}<div style="margin: 0; padding: 2px 0; {% if line['is_vulnerable'] %}background: rgba(239, 68, 68, 0.3); margin: 0 -1rem; padding: 2px 1rem;{% endif %}"><span style="color: #94a3b8; margin-right: 1rem; display: inline-block; width: 2.5em; text-align: right; font-size: 0.8em;">{{ line['line_number'] }}</span><span style="{% if line['is_vulnerable'] %}color: #fbbf24; font-weight: bold;{% else %}color: #e2e8f0;{% endif %}">{{ line['content'] }}</span></div>{% endfor %}</div>
+                        <div style="margin-top: 0.25rem; font-size: 0.7rem; color: #64748b;">
+                            File: {{ issue.code_context['file_path'] }}{% if issue.code_context['line_start'] %} (Line {{ issue.code_context['line_start'] }}{% if issue.code_context['line_end'] and issue.code_context['line_end'] != issue.code_context['line_start'] %}-{{ issue.code_context['line_end'] }}{% endif %}){% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if scan.issues|length > 20 %}
+            <div style="text-align: center; padding: 1rem; background: var(--bg-secondary); border-radius: 0 0 8px 8px;">
+                <em>... and {{ scan.issues|length - 20 }} more issues. Access the full report online for complete details.</em>
+            </div>
+            {% endif %}
+            </div>
+        </div>
+
+        {% if scan.metadata.ai_analysis %}
+        <!-- AI Analysis -->
+        <div class="ai-analysis page-break">
+            <h2>AI Security Analysis</h2>
+            <div class="ai-content">
+                {{ scan.metadata.ai_analysis|replace('\n', '<br>')|safe }}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Metadata -->
+        <div class="metadata-section">
+            <h2>Technical Details</h2>
+            <div class="metadata-grid">
+                {% for key, value in scan.metadata.items() %}
+                {% if key not in ['ai_analysis', 'scan_duration'] %}
+                <div class="info-item">
+                    <span class="info-label">{{ key.replace('_', ' ').title() }}:</span>
+                    <span class="info-value">
+                        {% if value is string %}
+                            {{ value }}
+                        {% elif value is sequence %}
+                            {{ value|join(', ') }}
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Generated by DevSecureX Security Platform</p>
+        <p>Report created on {{ current_date }} | Scan ID: {{ scan.scan_id }}</p>
+        <p>For more information, visit <strong>devsecurex.com</strong></p>
+    </div>
+</body>
+</html>

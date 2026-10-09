@@ -1,0 +1,149 @@
+rules:
+  # Web3 Frontend Security Rules
+  
+  - id: private-key-in-frontend
+    languages: [javascript, typescript]
+    severity: CRITICAL
+    message: Private key exposed in frontend code
+    pattern-either:
+      - pattern: const privateKey = "..."
+      - pattern: new ethers.Wallet("...")
+      - pattern: wallet.privateKey
+      - pattern: process.env.PRIVATE_KEY
+    fix: Never expose private keys in frontend. Use wallet connections like MetaMask
+
+  - id: unencrypted-rpc-endpoint
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Using unencrypted HTTP RPC endpoint
+    pattern-regex: 'https?://(?!localhost|127\.0\.0\.1).*:(8545|8546|7545)'
+    pattern-not-regex: 'https://'
+    fix: Always use HTTPS/WSS for RPC endpoints
+
+  - id: missing-chain-id-validation
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Missing chain ID validation before transaction
+    pattern: |
+      $PROVIDER.send($METHOD, ...)
+    pattern-not-inside: |
+      const chainId = await $PROVIDER.getNetwork();
+      if (chainId !== expectedChainId) { ... }
+    fix: Always validate chain ID to prevent wrong network transactions
+
+  - id: unsafe-bignumber-operation
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Unsafe BigNumber operation may cause precision loss
+    pattern-either:
+      - pattern: parseInt($BIGNUMBER)
+      - pattern: Number($BIGNUMBER)
+      - pattern: parseFloat($BIGNUMBER)
+    fix: Use BigNumber methods like .toString() or .toNumber() with caution
+
+  - id: missing-allowance-check
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Token transfer without allowance check
+    pattern: |
+      $TOKEN.transferFrom(...)
+    pattern-not-inside: |
+      const allowance = await $TOKEN.allowance(...);
+      if (allowance.gte(...)) { ... }
+    fix: Check allowance before transferFrom operations
+
+  - id: reentrancy-callback-pattern
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Potential reentrancy in callback pattern
+    pattern: |
+      await $CONTRACT.$METHOD(...);
+      setState(...);
+    fix: Update state before external calls
+
+  - id: unhandled-revert-frontend
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Contract call without proper error handling
+    pattern: await $CONTRACT.$METHOD(...)
+    pattern-not-inside: |
+      try {
+        ...
+      } catch (error) {
+        ...
+      }
+    fix: Wrap contract calls in try-catch blocks
+
+  - id: cors-wildcard-web3
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: CORS wildcard allows any origin to interact with Web3 API
+    pattern: |
+      cors({
+        origin: '*'
+      })
+    fix: Whitelist specific origins for Web3 endpoints
+
+  - id: ipfs-gateway-centralization
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Using centralized IPFS gateway
+    pattern-regex: 'https://(ipfs\.io|gateway\.pinata\.cloud|cloudflare-ipfs\.com)/ipfs/'
+    fix: Use multiple IPFS gateways or run your own node
+
+  - id: metamask-direct-encryption
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Using MetaMask for encryption is deprecated
+    pattern: "ethereum.request({ method: 'eth_getEncryptionPublicKey' })"
+    fix: Use proper encryption libraries instead
+
+  - id: unsafe-abi-encoding
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Manual ABI encoding prone to errors
+    pattern-regex: '0x[0-9a-fA-F]{8}.*\+.*\.slice\(2\)'
+    fix: Use ethers.js or web3.js ABI encoding methods
+
+  - id: nonce-reuse-vulnerability
+    languages: [javascript, typescript]
+    severity: CRITICAL
+    message: Transaction nonce managed manually - risk of reuse
+    pattern: |
+      nonce: $NONCE
+    pattern-not: |
+      nonce: await $PROVIDER.getTransactionCount(...)
+    fix: Always fetch current nonce from provider
+
+  - id: missing-event-listener-cleanup
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Event listener not cleaned up - memory leak
+    pattern: |
+      $CONTRACT.on($EVENT, ...)
+    pattern-not-inside: |
+      useEffect(() => {
+        ...
+        return () => $CONTRACT.off($EVENT, ...);
+      }, ...)
+    fix: Remove event listeners in cleanup functions
+
+  - id: web3-localstorage-sensitive
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: Storing sensitive Web3 data in localStorage
+    pattern-either:
+      - pattern: localStorage.setItem(..., $PRIVATEDATA)
+      - pattern: localStorage.setItem("privateKey", ...)
+      - pattern: localStorage.setItem("mnemonic", ...)
+    fix: Never store sensitive data in localStorage
+
+  - id: permit-signature-vulnerability
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: EIP-2612 permit without deadline validation
+    pattern: |
+      const signature = await signer._signTypedData(...)
+    pattern-not-inside: |
+      deadline: Math.floor(Date.now() / 1000) + 3600
+    fix: Always include reasonable deadline in permit signatures

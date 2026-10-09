@@ -1,0 +1,282 @@
+rules:
+  # Existing rules (keep all original rules)
+  - id: hard-coded-credentials
+    languages: [c, cpp]
+    severity: HIGH
+    message: Hard-coded credential detected in firmware
+    pattern-either:
+      - pattern: char* password = "..."
+      - pattern: char password[] = "..."
+      - pattern: const char* password = "..."
+      - pattern: '#define PASSWORD "..."'
+    fix: Use secure credential storage or environment variables
+
+  - id: insecure-gets
+    languages: [c, cpp]
+    severity: ERROR
+    message: gets() is dangerous and should never be used
+    pattern: gets(...)
+    fix: Use fgets() with proper bounds checking
+
+  - id: insecure-memcpy
+    languages: [c, cpp]
+    severity: ERROR
+    message: memcpy without bounds checking
+    patterns:
+      - pattern: memcpy($DST, $SRC, $SIZE)
+      - pattern-not: memcpy($DST, $SRC, sizeof($DST))
+    fix: Verify size parameter doesn't exceed destination buffer
+
+  - id: insecure-strcpy
+    languages: [c, cpp]
+    severity: ERROR
+    message: strcpy is unsafe - use strncpy or strlcpy
+    pattern: strcpy(...)
+    fix: Use strncpy with proper null termination
+
+  - id: sprintf-without-n
+    languages: [c, cpp]
+    severity: ERROR
+    message: sprintf is unsafe - use snprintf
+    pattern: sprintf(...)
+    fix: Use snprintf with buffer size parameter
+
+  # NEW ENHANCED RULES
+
+  - id: stack-buffer-overflow
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Potential stack buffer overflow
+    pattern-either:
+      - pattern: |
+          char $BUF[$SIZE];
+          ...
+          strcat($BUF, ...);
+      - pattern: |
+          char $BUF[$SIZE];
+          ...
+          scanf("%s", $BUF);
+    fix: Use safe string functions with bounds checking
+
+  - id: format-string-vulnerability
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Format string vulnerability - user input in format parameter
+    pattern-either:
+      - pattern: printf($INPUT)
+      - pattern: sprintf($BUF, $INPUT)
+      - pattern: fprintf($FILE, $INPUT)
+    fix: Use printf("%s", input) instead
+
+  - id: integer-overflow-iot
+    languages: [c, cpp]
+    severity: HIGH
+    message: Integer overflow in size calculation
+    pattern-either:
+      - pattern: malloc($A * $B)
+      - pattern: calloc($A, $B)
+    pattern-not: |
+      if ($A > SIZE_MAX / $B) { ... }
+    fix: Check for overflow before multiplication
+
+  - id: use-after-free
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Potential use-after-free vulnerability
+    patterns:
+      - pattern: free($PTR)
+      - pattern: $PTR = ...
+    pattern-not: $PTR = NULL
+    fix: Set pointers to NULL after freeing
+
+  - id: double-free
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Potential double-free vulnerability
+    patterns:
+      - pattern: |
+          free($PTR);
+          ...
+          free($PTR);
+    fix: Set pointer to NULL after first free
+
+  - id: null-pointer-dereference
+    languages: [c, cpp]
+    severity: HIGH
+    message: Potential null pointer dereference
+    pattern: |
+      $PTR = malloc(...);
+      $PTR->$FIELD = ...;
+    pattern-not: |
+      $PTR = malloc(...);
+      if ($PTR != NULL) { ... }
+    fix: Always check malloc return value
+
+  - id: race-condition-file-access
+    languages: [c, cpp]
+    severity: HIGH
+    message: TOCTOU race condition in file operations
+    patterns:
+      - pattern: access($FILE, ...)
+      - pattern: open($FILE, ...)
+    fix: Open file directly and handle errors
+
+  - id: insecure-random-iot
+    languages: [c, cpp]
+    severity: HIGH
+    message: Weak random number generation
+    pattern-either:
+      - pattern: rand()
+      - pattern: random()
+    fix: Use cryptographically secure random sources
+
+  - id: command-injection-iot
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Command injection vulnerability
+    pattern-either:
+      - pattern: system($CMD)
+      - pattern: popen($CMD, ...)
+      - pattern: execl($CMD, ...)
+    fix: Validate and sanitize all inputs
+
+  - id: heap-buffer-overflow
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Potential heap buffer overflow
+    pattern: |
+      $PTR = malloc($SIZE);
+      ...
+      memcpy($PTR, $SRC, $COPYSIZE);
+    pattern-not: |
+      if ($COPYSIZE <= $SIZE) { ... }
+    fix: Verify copy size doesn't exceed allocated size
+
+  - id: firmware-update-no-signature
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Firmware update without signature verification
+    pattern: |
+      fwrite($FIRMWARE, ..., $FILE)
+    pattern-not-inside: |
+      verify_signature(...);
+    fix: Always verify firmware signatures before applying updates
+
+  - id: weak-crypto-iot
+    languages: [c, cpp]
+    severity: HIGH
+    message: Weak or broken cryptographic algorithm
+    pattern-either:
+      - pattern: DES_...
+      - pattern: MD5_...
+      - pattern: SHA1_...
+      - pattern: RC4_...
+    fix: Use AES, SHA-256, or other modern algorithms
+
+  - id: cleartext-transmission
+    languages: [c, cpp]
+    severity: HIGH
+    message: Sensitive data transmitted in cleartext
+    pattern: |
+      send($SOCKET, $DATA, ...)
+    pattern-not-inside: |
+      encrypt_data(...);
+    fix: Encrypt all sensitive network communications
+
+  - id: debug-interface-enabled
+    languages: [c, cpp]
+    severity: HIGH
+    message: Debug interface left enabled in production
+    pattern-either:
+      - pattern: '#define DEBUG 1'
+      - pattern: '#define ENABLE_UART_DEBUG'
+      - pattern: 'jtag_enable()'
+    fix: Disable all debug interfaces in production builds
+
+  - id: default-credentials-iot
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Default credentials in IoT device
+    pattern-either:
+      - pattern: 'strcmp($USER, "admin") == 0 && strcmp($PASS, "admin") == 0'
+      - pattern: 'DEFAULT_PASSWORD'
+    fix: Force password change on first use
+
+  - id: bootloader-vulnerability
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: Bootloader lacks secure boot verification
+    pattern: |
+      boot_image($IMAGE)
+    pattern-not-inside: |
+      verify_boot_signature(...);
+    fix: Implement secure boot chain
+
+  - id: memory-disclosure
+    languages: [c, cpp]
+    severity: HIGH
+    message: Uninitialized memory disclosure
+    pattern: |
+      $TYPE $VAR[$SIZE];
+      ...
+      send($SOCKET, $VAR, ...);
+    pattern-not: |
+      memset($VAR, 0, sizeof($VAR));
+    fix: Initialize all buffers before use
+
+  - id: physical-attack-vector
+    languages: [c, cpp]
+    severity: WARNING
+    message: Sensitive data in memory not cleared
+    pattern: |
+      $TYPE $KEY[...];
+      ...
+      return;
+    pattern-not: |
+      memset($KEY, 0, sizeof($KEY));
+    fix: Clear sensitive data from memory after use
+
+  - id: power-analysis-leak
+    languages: [c, cpp]
+    severity: WARNING
+    message: Cryptographic operation vulnerable to power analysis
+    pattern: |
+      if ($SECRET == ...) {
+        $OPERATION1;
+      } else {
+        $OPERATION2;
+      }
+    fix: Use constant-time operations for crypto
+
+  - id: unsecured-ota-update
+    languages: [c, cpp]
+    severity: CRITICAL
+    message: OTA update without encryption
+    pattern: |
+      download_firmware($URL)
+    pattern-not-inside: |
+      https://
+    fix: Use HTTPS and verify certificates
+
+  - id: sensor-data-tampering
+    languages: [c, cpp]
+    severity: HIGH
+    message: Sensor data not validated
+    pattern: |
+      $DATA = read_sensor(...);
+      process_data($DATA);
+    pattern-not: |
+      if (validate_sensor_data($DATA)) { ... }
+    fix: Validate all sensor inputs
+
+  - id: watchdog-timer-missing
+    languages: [c, cpp]
+    severity: WARNING
+    message: Critical function lacks watchdog timer
+    pattern: |
+      while (1) {
+        ...
+      }
+    pattern-not-inside: |
+      watchdog_reset();
+    fix: Implement watchdog timer for reliability

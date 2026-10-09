@@ -1,0 +1,296 @@
+# DevSecureX Alert Rules
+# Comprehensive alerting for all monitoring phases
+
+groups:
+  # System Health Alerts
+  - name: system.health
+    rules:
+      - alert: SystemHealthCritical
+        expr: system_health_score < 50
+        for: 2m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: system
+        annotations:
+          summary: "DevSecureX system health is critically low"
+          description: "System health score is {{ $value }}%, which is below the critical threshold of 50%"
+          runbook_url: "https://docs.devsecurex.com/runbooks/system-health"
+          
+      - alert: SystemHealthWarning
+        expr: system_health_score < 80 and system_health_score >= 50
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: system
+        annotations:
+          summary: "DevSecureX system health is degraded"
+          description: "System health score is {{ $value }}%, consider investigating potential issues"
+
+  # Database Performance Alerts - Phase 1 Optimization
+  - name: database.performance
+    rules:
+      - alert: DatabaseConnectionPoolExhausted
+        expr: db_pool_checked_out_connections / db_pool_size_total * 100 > 90
+        for: 1m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: database
+          phase: "1"
+        annotations:
+          summary: "Database connection pool is nearly exhausted"
+          description: "Connection pool utilization is {{ $value }}% for pool {{ $labels.pool_name }}"
+          
+      - alert: DatabaseSlowQueries
+        expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: database
+          phase: "1"
+        annotations:
+          summary: "Database queries are running slowly"
+          description: "95th percentile query duration is {{ $value }}s"
+          
+      - alert: DatabaseConnectionCheckoutFailure
+        expr: rate(db_pool_checkouts_total{status="failed"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: database
+          phase: "1"
+        annotations:
+          summary: "Database connection checkout failures detected"
+          description: "{{ $value }} connection checkout failures per second"
+
+  # Redis & Caching Alerts - Phase 2 Optimization
+  - name: redis.caching
+    rules:
+      - alert: CacheHitRateLow
+        expr: cache_hit_rate_percentage < 80
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: cache
+          phase: "2"
+        annotations:
+          summary: "Cache hit rate is below optimal threshold"
+          description: "{{ $labels.cache_type }} cache hit rate is {{ $value }}%"
+          
+      - alert: RedisConnectionPoolExhausted
+        expr: redis_pool_checked_out_connections / redis_pool_size_total * 100 > 90
+        for: 1m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: cache
+          phase: "2"
+        annotations:
+          summary: "Redis connection pool is nearly exhausted"
+          description: "Redis pool {{ $labels.pool_name }} utilization is {{ $value }}%"
+          
+      - alert: CacheOperationTimeout
+        expr: histogram_quantile(0.95, rate(cache_operation_duration_seconds_bucket[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: cache
+          phase: "2"
+        annotations:
+          summary: "Cache operations are taking too long"
+          description: "95th percentile cache operation duration is {{ $value }}s"
+
+  # API Performance Alerts - Phase 3 Optimization
+  - name: api.performance
+    rules:
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 5
+        for: 1m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: api
+          phase: "3"
+        annotations:
+          summary: "API response times are above SLA threshold"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.endpoint }}"
+          
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status_code=~"4..|5.."}[5m]) / rate(http_requests_total[5m]) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: api
+          phase: "3"
+        annotations:
+          summary: "API error rate is above acceptable threshold"
+          description: "Error rate is {{ $value }}% for {{ $labels.endpoint }}"
+          
+      - alert: ConcurrentRequestsHigh
+        expr: http_concurrent_requests_current > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: api
+          phase: "3"
+        annotations:
+          summary: "High number of concurrent requests"
+          description: "{{ $value }} concurrent requests are being processed"
+
+  # Task System Alerts - Phase 4 Optimization
+  - name: task.system
+    rules:
+      - alert: TaskQueueSizeHigh
+        expr: sum(task_queue_size_current) > 100
+        for: 2m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: tasks
+          phase: "4"
+        annotations:
+          summary: "Task queue size is critically high"
+          description: "Total task queue size is {{ $value }} tasks"
+          
+      - alert: WorkerUtilizationHigh
+        expr: worker_utilization_percentage > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: tasks
+          phase: "4"
+        annotations:
+          summary: "Worker utilization is very high"
+          description: "Worker {{ $labels.worker_id }} utilization is {{ $value }}%"
+          
+      - alert: TaskProcessingFailure
+        expr: rate(tasks_processed_total{status="failed"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: tasks
+          phase: "4"
+        annotations:
+          summary: "High task processing failure rate"
+          description: "{{ $value }} tasks failing per second for {{ $labels.task_type }}"
+          
+      - alert: TaskWaitTimeHigh
+        expr: histogram_quantile(0.95, rate(task_wait_time_seconds_bucket[5m])) > 300
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: tasks
+          phase: "4"
+        annotations:
+          summary: "Task wait times are too high"
+          description: "95th percentile task wait time is {{ $value }}s"
+
+  # Security Scanning Alerts
+  - name: security.scanning
+    rules:
+      - alert: ScanFailureRate
+        expr: rate(security_scans_total{status="failed"}[5m]) / rate(security_scans_total[5m]) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: security
+        annotations:
+          summary: "Security scan failure rate is high"
+          description: "{{ $value }}% of {{ $labels.scan_type }} scans are failing"
+          
+      - alert: ScanDurationHigh
+        expr: histogram_quantile(0.95, rate(scan_duration_seconds_bucket[5m])) > 1800
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: security
+        annotations:
+          summary: "Security scans are taking too long"
+          description: "95th percentile scan duration is {{ $value }}s for {{ $labels.tool }}"
+          
+      - alert: CriticalVulnerabilitiesFound
+        expr: increase(vulnerabilities_found_total{severity="critical"}[1h]) > 5
+        for: 0m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: security
+        annotations:
+          summary: "Critical vulnerabilities detected"
+          description: "{{ $value }} critical vulnerabilities found in the last hour"
+
+  # SLA Compliance Alerts - Phase 5 Monitoring
+  - name: sla.compliance
+    rules:
+      - alert: SLAComplianceBreached
+        expr: sla_compliance_percentage < 95
+        for: 5m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: sla
+          phase: "5"
+        annotations:
+          summary: "SLA compliance is below target"
+          description: "{{ $labels.sla_type }} SLA compliance is {{ $value }}% for {{ $labels.service }}"
+          
+      - alert: SLAComplianceWarning
+        expr: sla_compliance_percentage < 99 and sla_compliance_percentage >= 95
+        for: 10m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: sla
+          phase: "5"
+        annotations:
+          summary: "SLA compliance is degraded"
+          description: "{{ $labels.sla_type }} SLA compliance is {{ $value }}% for {{ $labels.service }}"
+
+  # Resource Utilization Alerts
+  - name: resource.utilization
+    rules:
+      - alert: HighCPUUsage
+        expr: (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: resources
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}%"
+          
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: devsecurex
+          category: resources
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}%"
+          
+      - alert: LowDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          service: devsecurex
+          category: resources
+        annotations:
+          summary: "Low disk space detected"
+          description: "Disk usage is {{ $value }}% on {{ $labels.mountpoint }}"

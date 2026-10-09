@@ -1,0 +1,171 @@
+# ==================================================================================
+# DevSecureX — local development stack
+# ==================================================================================
+# Runs the backend together with local PostgreSQL and Redis containers.
+# Copy .env.example to .env and adjust values, then: docker-compose up --build
+# ==================================================================================
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Build profile support - defaults to core for balanced performance
+        - BUILD_PROFILE=${BUILD_PROFILE:-core}
+        - INSTALL_JAVA_TOOLS=${INSTALL_JAVA_TOOLS:-false}
+        - INSTALL_GO_TOOLS=${INSTALL_GO_TOOLS:-true}
+        - INSTALL_DOTNET_TOOLS=${INSTALL_DOTNET_TOOLS:-false}
+        - INSTALL_RUBY_TOOLS=${INSTALL_RUBY_TOOLS:-true}
+        - INSTALL_PHP_TOOLS=${INSTALL_PHP_TOOLS:-false}
+        - REQUIREMENTS_FILE=${REQUIREMENTS_FILE:-requirements-core.txt}
+    container_name: devsecurex-backend-${BUILD_PROFILE:-core}
+    # CRITICAL FIX: Auto-restart for development resilience
+    restart: unless-stopped
+    # Start application with fast initialization to avoid startup hangs
+    command: ["python", "/app/start_fast.py"]
+    ports:
+      - "8010:8010"  # Changed: Host 8010 → Container 8010 (consistent ports)
+    env_file:
+      - .env
+    environment:
+      # Environment switching
+      - APP_ENV=local
+      - ENVIRONMENT=local
+      - PORT=8010  # Set explicit port to match docker-compose
+
+      # Local container service URLs (override any values from .env)
+      - DATABASE_URL=postgresql+asyncpg://devsecurex_user:devsecurex_pass@postgres:5432/devsecurex_db
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Database Connection Pool Configuration - CRITICAL FIX
+      - DB_POOL_SIZE=40
+      - DB_MAX_OVERFLOW=60
+      - DB_POOL_TIMEOUT=120
+      - DB_POOL_RECYCLE=3600
+      - DB_POOL_PRE_PING=true
+      # Build profile environment variables
+      - BUILD_PROFILE=${BUILD_PROFILE:-core}
+      - SCANNING_TOOLS_PROFILE=${BUILD_PROFILE:-core}
+      # Enterprise scanning configuration - use correct variable names
+      - USE_ENTERPRISE_QUEUES=${USE_ENTERPRISE_QUEUES:-false}
+      - ENABLE_ENTERPRISE_MONITORING=${ENABLE_ENTERPRISE_MONITORING:-true}
+      # Fortress scanning configuration - NEW SYSTEM
+      - USE_FORTRESS_QUEUES=${USE_FORTRESS_QUEUES:-true}
+      - FORTRESS_WORKER_COUNT=${SCAN_WORKERS:-3}
+      # Worker configuration aligned with .env
+      - SCAN_WORKERS=${SCAN_WORKERS:-3}
+      - FORTRESS_WORKERS=${SCAN_WORKERS:-3}
+      - AUTOFIX_WORKERS=${AUTOFIX_WORKERS:-1}
+      - MAX_CONCURRENT_SCANS=3
+      - WORKER_TIMEOUT=3600
+      - SCAN_TIMEOUT_SECONDS=1800
+      - REDIS_MAX_CONNECTIONS=20
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Advanced security features (conditional based on profile)
+      - ENABLE_COMPREHENSIVE_ANALYSIS=${ENABLE_COMPREHENSIVE_ANALYSIS:-true}
+      - ENABLE_API_SECURITY_RULES=${ENABLE_API_SECURITY_RULES:-true}
+      - ENABLE_CUSTOM_RULES=${ENABLE_CUSTOM_RULES:-false}
+      - ENABLE_COMMUNITY_RULES=${ENABLE_COMMUNITY_RULES:-false}
+      - ENABLE_AI_ANALYSIS=${ENABLE_AI_ANALYSIS:-false}
+      - ENABLE_ANOMALY_DETECTION=${ENABLE_ANOMALY_DETECTION:-false}
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # CRITICAL FIX: Enhanced health check with worker monitoring
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health/detailed"]
+      interval: 60s  # Reduced frequency to prevent spam
+      timeout: 15s   # Increased timeout for Docker startup
+      retries: 5     # More retries for resilience
+      start_period: 120s  # Longer start period for database initialization
+    
+    # PRODUCTION FIX: Resource limits optimized for e2-medium (2 vCPU, 4GB RAM)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'      # Leave 0.5 CPU for postgres/redis
+          memory: 2.5G     # Leave 1.5GB for postgres/redis + system
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # ============================================================================
+  # LOCAL SERVICES - ENABLED FOR LOCAL DEVELOPMENT
+  # ============================================================================
+
+  # Local PostgreSQL service
+  postgres:
+    image: postgres:15-alpine
+    container_name: devsecurex-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-devsecurex_db}
+      - POSTGRES_USER=${POSTGRES_USER:-devsecurex_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-devsecurex_pass}
+      # Production security settings
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+    ports:
+      - "6544:5432"  # Map host port 6544 to container port 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devsecurex_user -d devsecurex_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Production resource limits for e2-medium VM
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+
+  # Local Redis service
+  redis:
+    image: redis:7-alpine
+    container_name: devsecurex-redis
+    restart: unless-stopped
+    ports:
+      - "6382:6379"  # Map host port 6382 to container port 6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --save 60 1 --loglevel warning --appendonly yes --protected-mode no
+    # Production resource limits for e2-medium VM
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+
+# Docker volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

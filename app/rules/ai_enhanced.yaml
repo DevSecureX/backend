@@ -1,0 +1,223 @@
+rules:
+  # Existing rules (keep all original rules)
+  - id: insecure-model-loading
+    languages: [python]
+    severity: ERROR
+    message: Insecure loading of PyTorch model - potential arbitrary code execution
+    pattern-either:
+      - pattern: torch.load(...)
+      - pattern: torch.jit.load(...)
+      - pattern: torch.hub.load(...)
+    fix: |
+      Use torch.load() with weights_only=True parameter:
+      model = torch.load('model.pth', map_location=device, weights_only=True)
+      Or use safetensors format for secure model storage.
+    metadata:
+      cwe: CWE-502
+      category: security
+      references:
+        - https://pytorch.org/docs/stable/generated/torch.load.html
+        - https://github.com/pytorch/pytorch/issues/52596
+
+  - id: numpy-in-torch-datasets
+    languages: [python]
+    severity: WARNING
+    message: NumPy operations in PyTorch Dataset can cause reproducibility issues
+    patterns:
+      - pattern-inside:
+          pattern-either:
+            - pattern: |
+                class $CLASS(...):
+                  ...
+                  def __getitem__(self, $INDEX):
+                    ...
+      - pattern-either:
+          - pattern: np.random.$METHOD(...)
+          - pattern: numpy.random.$METHOD(...)
+    fix: Use torch.manual_seed() and torch random operations instead of NumPy random
+
+  - id: pickles-in-numpy
+    languages: [python]
+    severity: ERROR
+    message: Unsafe pickle usage in numpy.load() - potential arbitrary code execution
+    pattern: numpy.load(..., allow_pickle=True, ...)
+    fix: Use allow_pickle=False or switch to NPZ format without pickled objects
+
+  - id: pickles-in-torch-distributed
+    languages: [python]
+    severity: HIGH
+    message: Pickle-based functions in torch.distributed are vulnerable to arbitrary code execution
+    pattern-either:
+      - pattern: torch.distributed.broadcast_object_list(...)
+      - pattern: torch.distributed.all_gather_object(...)
+      - pattern: torch.distributed.gather_object(...)
+      - pattern: torch.distributed.scatter_object_list(...)
+    fix: Use tensor-based communication methods instead of object serialization
+
+  - id: unauthorized-llm-usage
+    languages: [python]
+    severity: HIGH
+    message: Unauthorized use of AI/LLM libraries detected - potential shadow AI
+    pattern-either:
+      - pattern: openai.$METHOD(...)
+      - pattern: anthropic.$METHOD(...)
+      - pattern: cohere.$METHOD(...)
+      - pattern: replicate.$METHOD(...)
+      - pattern: huggingface_hub.$METHOD(...)
+    metadata:
+      category: compliance
+      subcategory: shadow-ai
+
+  # NEW ENHANCED RULES
+
+  - id: unsafe-transformers-deserialization
+    languages: [python]
+    severity: CRITICAL
+    message: Unsafe deserialization in Transformers library - potential RCE
+    pattern-either:
+      - pattern: AutoModel.from_pretrained(..., trust_remote_code=True, ...)
+      - pattern: AutoTokenizer.from_pretrained(..., trust_remote_code=True, ...)
+      - pattern: pipeline(..., trust_remote_code=True, ...)
+    fix: |
+      Never use trust_remote_code=True unless absolutely necessary and the source is verified.
+      Review the remote code before enabling this option.
+    metadata:
+      cwe: CWE-502
+      references:
+        - https://huggingface.co/docs/transformers/main_classes/model
+
+  - id: insecure-dataset-download
+    languages: [python]
+    severity: HIGH
+    message: Downloading datasets without verification - potential data poisoning
+    pattern-either:
+      - pattern: datasets.load_dataset(..., verification_mode="no_checks", ...)
+      - pattern: hub.download(..., force_download=True, ...)
+      - pattern: gdown.download(..., verify=False, ...)
+    fix: Always verify dataset checksums and use trusted sources
+
+  - id: gradient-checkpointing-memory-leak
+    languages: [python]
+    severity: WARNING
+    message: Potential memory leak with gradient checkpointing
+    patterns:
+      - pattern: model.gradient_checkpointing_enable(...)
+      - pattern-not-inside:
+          pattern: |
+            with torch.no_grad():
+              ...
+    fix: Ensure proper memory management when using gradient checkpointing
+
+  - id: unsafe-jax-jit-compilation
+    languages: [python]
+    severity: WARNING
+    message: Unsafe JAX JIT compilation detected - potential code injection
+    pattern-either:
+      - pattern: jax.jit(..., donate_argnums=..., static_argnums=None, ...)
+      - pattern: '@jax.jit'
+    metadata:
+      subcategory: jax-security
+
+  - id: tensorflow-session-injection
+    languages: [python]
+    severity: CRITICAL
+    message: TensorFlow session running arbitrary operations - code injection risk
+    pattern-either:
+      - pattern: tf.Session().run($INPUT)
+      - pattern: sess.run($INPUT)
+    fix: Validate and sanitize all inputs to TensorFlow sessions
+
+  - id: mlflow-model-registry-exposure
+    languages: [python]
+    severity: HIGH
+    message: MLflow model registry credentials exposed
+    pattern-either:
+      - pattern: mlflow.set_tracking_uri("...")
+      - pattern: os.environ["MLFLOW_TRACKING_URI"] = "..."
+    fix: Use secure credential management for MLflow connections
+
+  - id: wandb-api-key-exposure
+    languages: [python]
+    severity: CRITICAL
+    message: Weights & Biases API key exposed in code
+    pattern-either:
+      - pattern: wandb.login(key="...")
+      - pattern: os.environ["WANDB_API_KEY"] = "..."
+    fix: Use environment variables or secure key management
+
+  - id: unsafe-onnx-model-loading
+    languages: [python]
+    severity: HIGH
+    message: ONNX model loading without verification
+    pattern: onnx.load(...)
+    fix: Verify ONNX model signatures and use onnx.checker.check_model()
+
+  - id: ray-cluster-unauthorized-access
+    languages: [python]
+    severity: CRITICAL
+    message: Ray cluster initialized without authentication
+    pattern: ray.init(...)
+    pattern-not: ray.init(..., _redis_password=..., ...)
+    fix: Always use authentication for Ray clusters in production
+
+  - id: kubeflow-pipeline-injection
+    languages: [python]
+    severity: HIGH
+    message: Potential command injection in Kubeflow pipeline
+    pattern-either:
+      - pattern: dsl.ContainerOp(..., command=[...], ...)
+      - pattern: func_to_container_op(...)
+    fix: Sanitize all inputs to Kubeflow pipeline components
+
+  - id: federated-learning-poisoning
+    languages: [python]
+    severity: HIGH
+    message: Federated learning without Byzantine-robust aggregation
+    pattern-either:
+      - pattern: fedavg(...)
+      - pattern: aggregate_gradients(...)
+    pattern-not: |
+      $FUNC(..., robust=True, ...)
+    fix: Use Byzantine-robust aggregation methods like Krum or trimmed mean
+
+  - id: differential-privacy-leak
+    languages: [python]
+    severity: HIGH
+    message: Insufficient differential privacy budget
+    patterns:
+      - pattern: privacy_engine.make_private(..., target_epsilon=$EPSILON, ...)
+      - metavariable-comparison:
+          metavariable: $EPSILON
+          comparison: ">"
+          value: 10.0
+    fix: Use epsilon values < 10 for meaningful privacy guarantees
+
+  - id: model-inversion-attack-risk
+    languages: [python]
+    severity: WARNING
+    message: Model architecture vulnerable to inversion attacks
+    patterns:
+      - pattern: model.eval()
+      - pattern-not-inside: |
+          with torch.inference_mode():
+            ...
+    fix: Use inference mode and limit model output granularity
+
+  - id: membership-inference-risk
+    languages: [python]
+    severity: WARNING
+    message: Training without membership inference protection
+    pattern: model.train()
+    pattern-not-inside: |
+      $PRIVACY = PrivacyEngine(...)
+      ...
+    fix: Use differential privacy or regularization techniques
+
+  - id: unsafe-cuda-memory-access
+    languages: [python]
+    severity: ERROR
+    message: Direct CUDA memory manipulation - potential security risk
+    pattern-either:
+      - pattern: torch.cuda._malloc(...)
+      - pattern: cupy.cuda.MemoryPointer(...)
+    fix: Use high-level tensor operations instead of direct memory access

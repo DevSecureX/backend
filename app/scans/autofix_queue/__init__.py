@@ -1,0 +1,1 @@
+# Auto-fix queue system for background processing

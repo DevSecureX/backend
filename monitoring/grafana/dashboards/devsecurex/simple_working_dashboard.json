@@ -1,0 +1,373 @@
+{
+  "id": null,
+  "uid": "devsecurex-simple-working",
+  "title": "DevSecureX - Simple Working Dashboard",
+  "description": "Basic working dashboard with real DevSecureX metrics",
+  "tags": ["devsecurex", "working", "simple"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "DevSecureX Backend Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "up{job=\"devsecurex-backend\"}",
+          "refId": "A",
+          "legendFormat": "Backend Status",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN"
+                },
+                "1": {
+                  "text": "UP"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 1}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "System Health Score",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "system_health_score{job=\"devsecurex-backend\"}",
+          "refId": "A",
+          "legendFormat": "Health Score",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 50},
+              {"color": "green", "value": 80}
+            ]
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "Active Database Queries",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "db_active_queries_current{job=\"devsecurex-backend\"}",
+          "refId": "A",
+          "legendFormat": "Active Queries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 10},
+              {"color": "red", "value": 50}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+    },
+    {
+      "id": 4,
+      "title": "Scaling Target Workers",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "scaling_target_workers{job=\"devsecurex-backend\"}",
+          "refId": "A",
+          "legendFormat": "Target Workers",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "blue", "value": 0},
+              {"color": "green", "value": 1},
+              {"color": "yellow", "value": 5},
+              {"color": "red", "value": 10}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center"
+      },
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+    },
+    {
+      "id": 5,
+      "title": "Backend Uptime History",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "up{job=\"devsecurex-backend\"}",
+          "refId": "A",
+          "legendFormat": "Backend Up",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    },
+    {
+      "id": 6,
+      "title": "Database Activity Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "db_active_queries_current{job=\"devsecurex-backend\"}",
+          "refId": "A",
+          "legendFormat": "Active Queries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+    },
+    {
+      "id": 7,
+      "title": "Available Metrics Summary",
+      "type": "text",
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 16},
+      "options": {
+        "mode": "markdown",
+        "content": "## Available DevSecureX Metrics\n\nThis dashboard shows **real data** from your DevSecureX backend. Here are the key metrics currently available:\n\n- **Backend Status**: Shows if the backend service is up and running\n- **System Health Score**: Current health score (0-100)\n- **Active Database Queries**: Number of currently executing database queries\n- **Scaling Target Workers**: Target number of workers for scaling\n\n### To verify metrics are working:\n1. Check that \"Backend Status\" shows \"UP\"\n2. Observe database activity as you use the application\n3. Monitor system health score changes\n\n### Next steps:\n- Add more panels as you generate application traffic\n- Create alerts for when backend goes down\n- Monitor specific endpoints once HTTP metrics are collected"
+      }
+    }
+  ]
+}

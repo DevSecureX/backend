@@ -1,0 +1,5 @@
+# Data analysis packages (optimized)
+python-Levenshtein==0.26.1
+
+# AI integration for enhanced analysis
+openai==1.97.1

@@ -1,0 +1,232 @@
+{
+  "id": null,
+  "uid": "devsecurex-task-system",
+  "title": "DevSecureX - Task System (Phase 4)",
+  "description": "Background task processing, worker scaling, and Phase 4 queue management metrics",
+  "tags": ["devsecurex", "tasks", "workers", "scaling", "phase-4"],
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Task Queue Size by Priority",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "task_queue_size_current",
+          "refId": "A",
+          "legendFormat": "{{queue_name}} - {{priority}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "Task Processing Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(tasks_processed_total[5m])",
+          "refId": "A",
+          "legendFormat": "{{task_type}} - {{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "tps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "Active Workers by Type",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "workers_active_current",
+          "refId": "A",
+          "legendFormat": "{{worker_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    },
+    {
+      "id": 4,
+      "title": "Worker Utilization %",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "worker_utilization_percentage",
+          "refId": "A",
+          "legendFormat": "{{worker_id}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+    },
+    {
+      "id": 5,
+      "title": "Task Wait Time Percentiles",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(task_wait_time_seconds_bucket[5m]))",
+          "refId": "A",
+          "legendFormat": "p50",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(task_wait_time_seconds_bucket[5m]))",
+          "refId": "B",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(task_wait_time_seconds_bucket[5m]))",
+          "refId": "C",
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+    },
+    {
+      "id": 6,
+      "title": "Task Execution Time Percentiles",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(task_execution_time_seconds_bucket[5m]))",
+          "refId": "A",
+          "legendFormat": "p50",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(task_execution_time_seconds_bucket[5m]))",
+          "refId": "B",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(task_execution_time_seconds_bucket[5m]))",
+          "refId": "C",
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+    },
+    {
+      "id": 7,
+      "title": "Auto-Scaling Events",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(worker_scaling_events_total[5m])",
+          "refId": "A",
+          "legendFormat": "{{event_type}} - {{worker_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-uid"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "eps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+    }
+  ]
+}

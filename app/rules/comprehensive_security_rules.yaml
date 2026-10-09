@@ -1,0 +1,1583 @@
+rules:
+  # ============================================================================
+  # COMPREHENSIVE SECURITY RULES FOR WORLD-CLASS VULNERABILITY DETECTION
+  # Target: 90%+ Accuracy (57+/64 vulnerabilities)
+  # Coverage: All OWASP Top 10, CWE Top 25, and beyond
+  # Languages: Python, JavaScript, TypeScript, Java, Go, C/C++, PHP, Ruby
+  # ============================================================================
+
+  # ===========================================
+  # INJECTION VULNERABILITIES (A03:2021)
+  # ===========================================
+
+  # SQL INJECTION - PYTHON (Enhanced Detection)
+  - id: python-sql-injection-format
+    pattern-either:
+      - pattern: |
+          $QUERY = f"... {$VAR} ..."
+          ...
+          $CURSOR.execute($QUERY)
+      - pattern: |
+          $QUERY = "... " + $VAR + " ..."
+          ...
+          $CURSOR.execute($QUERY)
+      - pattern: |
+          $QUERY = "... %s ..." % $VAR
+          ...
+          $CURSOR.execute($QUERY)
+      - pattern: $CURSOR.execute(f"... {$VAR} ...")
+      - pattern: $CURSOR.execute("... " + $VAR + " ...")
+      - pattern: $CURSOR.execute("... {} ...".format($VAR))
+    message: "SQL injection vulnerability - unsafe string formatting in database query"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  - id: python-sql-injection-orm
+    pattern-either:
+      - pattern: |
+          $MODEL.objects.extra(where=["..." + $VAR + "..."])
+      - pattern: |
+          $MODEL.objects.raw(f"... {$VAR} ...")
+      - pattern: |
+          $SESSION.execute(text(f"... {$VAR} ..."))
+      - pattern: |
+          $CONNECTION.execute("... " + $VAR + " ...")
+    message: "SQL injection in ORM - unsafe query construction"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  # SQL INJECTION - JAVASCRIPT/TYPESCRIPT
+  - id: js-sql-injection-template
+    pattern-either:
+      - pattern: |
+          $QUERY = `... ${$VAR} ...`;
+          ...
+          $DB.query($QUERY)
+      - pattern: |
+          $QUERY = "... " + $VAR + " ...";
+          ...
+          $DB.query($QUERY)
+      - pattern: $DB.query(`... ${$VAR} ...`)
+      - pattern: $DB.query("... " + $VAR + " ...")
+      - pattern: $DB.execute(`... ${$VAR} ...`)
+      - pattern: $POOL.query(`... ${$VAR} ...`)
+    message: "SQL injection vulnerability in JavaScript/TypeScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  - id: js-sql-injection-sequelize
+    pattern-either:
+      - pattern: |
+          $MODEL.findAll({
+            where: $SEQUELIZE.literal(`... ${$VAR} ...`)
+          })
+      - pattern: |
+          $SEQUELIZE.query(`... ${$VAR} ...`)
+      - pattern: |
+          $MODEL.sequelize.query("... " + $VAR + " ...")
+    message: "SQL injection in Sequelize ORM"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  # SQL INJECTION - JAVA
+  - id: java-sql-injection-concat
+    pattern-either:
+      - pattern: |
+          $QUERY = "... " + $VAR + " ...";
+          ...
+          $STMT.executeQuery($QUERY)
+      - pattern: |
+          String $QUERY = String.format("... %s ...", $VAR);
+          ...
+          $STMT.executeQuery($QUERY)
+      - pattern: $STMT.executeQuery("... " + $VAR + " ...")
+      - pattern: $STMT.executeUpdate("... " + $VAR + " ...")
+      - pattern: $CONN.prepareStatement("... " + $VAR + " ...")
+    message: "SQL injection vulnerability in Java"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  - id: java-sql-injection-jpa
+    pattern-either:
+      - pattern: |
+          $EM.createQuery("... " + $VAR + " ...")
+      - pattern: |
+          $EM.createNativeQuery("... " + $VAR + " ...")
+      - pattern: |
+          @Query("... " + $VAR + " ...")
+    message: "SQL injection in JPA/Hibernate query"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  # SQL INJECTION - GO
+  - id: go-sql-injection-fmt
+    pattern-either:
+      - pattern: |
+          $QUERY := "... " + $VAR + " ..."
+          $DB.Query($QUERY)
+      - pattern: |
+          $QUERY := fmt.Sprintf("... %s ...", $VAR)
+          $DB.Query($QUERY)
+      - pattern: $DB.Query("... " + $VAR + " ...")
+      - pattern: $DB.Exec("... " + $VAR + " ...")
+      - pattern: $TX.Query("... " + $VAR + " ...")
+    message: "SQL injection vulnerability in Go"
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  # SQL INJECTION - PHP
+  - id: php-sql-injection-concat
+    pattern-either:
+      - pattern: |
+          $query = "... " . $var . " ...";
+          mysql_query($query)
+      - pattern: |
+          $query = "... " . $var . " ...";
+          mysqli_query($conn, $query)
+      - pattern: mysql_query("... " . $var . " ...")
+      - pattern: mysqli_query($conn, "... " . $var . " ...")
+      - pattern: $pdo->query("... " . $var . " ...")
+      - pattern: $pdo->exec("... " . $var . " ...")
+    message: "SQL injection vulnerability in PHP"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  # COMMAND INJECTION - PYTHON
+  - id: python-command-injection-subprocess
+    pattern-either:
+      - pattern: subprocess.call($VAR, shell=True)
+      - pattern: subprocess.Popen($VAR, shell=True)
+      - pattern: subprocess.run($VAR, shell=True)
+      - pattern: subprocess.check_call($VAR, shell=True)
+      - pattern: subprocess.check_output($VAR, shell=True)
+      - pattern: os.system($VAR)
+      - pattern: os.popen($VAR)
+      - pattern: os.spawnl(os.P_WAIT, $VAR, ...)
+    message: "Command injection vulnerability in Python"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  # COMMAND INJECTION - JAVASCRIPT
+  - id: js-command-injection-child-process
+    pattern-either:
+      - pattern: exec($VAR)
+      - pattern: execSync($VAR)
+      - pattern: "spawn($VAR, {shell: true})"
+      - pattern: "spawnSync($VAR, {shell: true})"
+      - pattern: execFile($VAR)
+      - pattern: fork($VAR)
+      - pattern: $CHILD_PROCESS.exec($VAR)
+    message: "Command injection vulnerability in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  # COMMAND INJECTION - JAVA
+  - id: java-command-injection-runtime
+    pattern-either:
+      - pattern: Runtime.getRuntime().exec($VAR)
+      - pattern: ProcessBuilder($VAR)
+      - pattern: new ProcessBuilder($VAR)
+      - pattern: |
+          ProcessBuilder $PB = new ProcessBuilder();
+          $PB.command($VAR)
+      - pattern: |
+          $PB.command("sh", "-c", $VAR)
+    message: "Command injection vulnerability in Java"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  # COMMAND INJECTION - GO
+  - id: go-command-injection-exec
+    pattern-either:
+      - pattern: exec.Command($VAR)
+      - pattern: exec.Command("sh", "-c", $VAR)
+      - pattern: exec.Command("bash", "-c", $VAR)
+      - pattern: exec.Command("cmd", "/C", $VAR)
+      - pattern: |
+          $CMD := exec.Command("sh", "-c", $VAR)
+          $CMD.Run()
+    message: "Command injection vulnerability in Go"
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  # COMMAND INJECTION - PHP
+  - id: php-command-injection-exec
+    pattern-either:
+      - pattern: exec($var)
+      - pattern: system($var)
+      - pattern: shell_exec($var)
+      - pattern: passthru($var)
+      - pattern: proc_open($var, ...)
+      - pattern: popen($var, ...)
+      - pattern: |
+          \`$var\`
+    message: "Command injection vulnerability in PHP"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  # CODE INJECTION - ALL LANGUAGES
+  - id: python-code-injection-eval
+    pattern-either:
+      - pattern: eval($VAR)
+      - pattern: exec($VAR)
+      - pattern: compile($VAR, ...)
+      - patterns:
+        - pattern: eval($EXPR)
+        - pattern-not: eval("...")
+      - patterns:
+        - pattern: exec($EXPR)
+        - pattern-not: exec("...")
+    message: "Code injection vulnerability via eval/exec"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-95"]
+      owasp: "A03:2021 – Injection"
+
+  - id: js-code-injection-eval
+    patterns:
+      - pattern: eval($VAR)
+      - pattern-not: eval("...")
+    message: "Code injection vulnerability via eval in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-95"]
+      owasp: "A03:2021 – Injection"
+
+  - id: php-code-injection-eval
+    patterns:
+      - pattern: eval($var)
+      - pattern-not: eval("...")
+    message: "Code injection vulnerability via eval in PHP"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-95"]
+      owasp: "A03:2021 – Injection"
+
+  # LDAP INJECTION
+  - id: java-ldap-injection
+    pattern-either:
+      - pattern: |
+          $FILTER = "... " + $VAR + " ...";
+          ...
+          $CTX.search(..., $FILTER, ...)
+      - pattern: $CTX.search(..., "... " + $VAR + " ...", ...)
+      - pattern: |
+          String $FILTER = String.format("... %s ...", $VAR);
+          ...
+          $CTX.search(..., $FILTER, ...)
+    message: "LDAP injection vulnerability detected"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-90"]
+      owasp: "A03:2021 – Injection"
+
+  # ===========================================
+  # XSS VULNERABILITIES (A03:2021)
+  # ===========================================
+
+  # XSS - PYTHON (Flask/Django)
+  - id: python-xss-template-injection
+    pattern-either:
+      - pattern: |
+          $HTML = f"<...{$VAR}...>"
+          return $HTML
+      - pattern: |
+          $HTML = "<..." + $VAR + "...>"
+          return $HTML
+      - pattern: |
+          return f"<...{$VAR}...>"
+      - pattern: |
+          return "<..." + $VAR + "...>"
+      - pattern: |
+          render_template_string(f"... {$VAR} ...")
+      - pattern: |
+          mark_safe(f"<...{$VAR}...>")
+    message: "XSS vulnerability - unescaped user input in HTML"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-79"]
+      owasp: "A03:2021 – Injection"
+
+  # XSS - JAVASCRIPT/TYPESCRIPT
+  - id: js-xss-dom-manipulation
+    pattern-either:
+      - pattern: |
+          $HTML = `<...${$VAR}...>`;
+          document.write($HTML)
+      - pattern: |
+          document.write(`<...${$VAR}...>`)
+      - pattern: |
+          document.innerHTML = `<...${$VAR}...>`
+      - pattern: |
+          $ELEMENT.innerHTML = `<...${$VAR}...>`
+      - pattern: |
+          $ELEMENT.outerHTML = `<...${$VAR}...>`
+      - pattern: |
+          $ELEMENT.insertAdjacentHTML('...', `<...${$VAR}...>`)
+    message: "XSS vulnerability - unescaped user input in DOM"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-79"]
+      owasp: "A03:2021 – Injection"
+
+  - id: js-xss-jquery
+    pattern-either:
+      - pattern: |
+          $($ELEMENT).html(`<...${$VAR}...>`)
+      - pattern: |
+          $($ELEMENT).append(`<...${$VAR}...>`)
+      - pattern: |
+          $($ELEMENT).prepend(`<...${$VAR}...>`)
+      - pattern: |
+          $($ELEMENT).after(`<...${$VAR}...>`)
+      - pattern: |
+          $($ELEMENT).before(`<...${$VAR}...>`)
+    message: "XSS vulnerability in jQuery manipulation"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-79"]
+      owasp: "A03:2021 – Injection"
+
+  # XSS - JAVA (JSP/Servlet)
+  - id: java-xss-servlet-response
+    pattern-either:
+      - pattern: |
+          $HTML = "<..." + $VAR + "...>";
+          $RESPONSE.getWriter().write($HTML)
+      - pattern: |
+          $RESPONSE.getWriter().write("<..." + $VAR + "...>")
+      - pattern: |
+          out.println("<..." + $VAR + "...>")
+      - pattern: |
+          $RESPONSE.getWriter().println("<..." + $VAR + "...>")
+    message: "XSS vulnerability in Java servlet response"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-79"]
+      owasp: "A03:2021 – Injection"
+
+  # XSS - PHP
+  - id: php-xss-echo-unescaped
+    pattern-either:
+      - pattern: echo $var;
+      - pattern: print $var;
+      - pattern: printf($var);
+      - pattern: |
+          echo "<..." . $var . "...>";
+      - pattern: |
+          print "<..." . $var . "...>";
+      - pattern: |
+          echo $_GET[$key];
+      - pattern: |
+          echo $_POST[$key];
+      - pattern: |
+          echo $_REQUEST[$key];
+    message: "XSS vulnerability - unescaped output in PHP"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-79"]
+      owasp: "A03:2021 – Injection"
+
+  # ===========================================
+  # HARDCODED SECRETS (A07:2021)
+  # ===========================================
+
+  # HARDCODED SECRETS - PYTHON
+  - id: python-hardcoded-secrets-advanced
+    pattern-either:
+      - pattern: PASSWORD = "$VALUE"
+      - pattern: SECRET_KEY = "$VALUE"
+      - pattern: API_TOKEN = "$VALUE"
+      - pattern: API_KEY = "$VALUE"
+      - pattern: JWT_SECRET = "$VALUE"
+      - pattern: DATABASE_PASSWORD = "$VALUE"
+      - pattern: PRIVATE_KEY = "$VALUE"
+      - pattern: ENCRYPTION_KEY = "$VALUE"
+      - pattern: ACCESS_TOKEN = "$VALUE"
+      - pattern: REFRESH_TOKEN = "$VALUE"
+      - pattern: WEBHOOK_SECRET = "$VALUE"
+      - pattern: CLIENT_SECRET = "$VALUE"
+    pattern-where-python: |
+      import re
+      value = vars["$VALUE"]
+      # Check for secrets that look like real credentials (not placeholders)
+      return len(value) > 8 and not any(placeholder in value.lower() for placeholder in ['placeholder', 'example', 'test', 'dummy', 'fake', 'xxx', 'yyy', 'zzz'])
+    message: "Hardcoded secret detected in Python"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  # HARDCODED SECRETS - JAVASCRIPT
+  - id: js-hardcoded-secrets-advanced
+    pattern-either:
+      - pattern: |
+          const $VAR = "$VALUE";
+      - pattern: |
+          var $VAR = "$VALUE";
+      - pattern: |
+          let $VAR = "$VALUE";
+      - pattern: |
+          $VAR: "$VALUE"
+    pattern-where-python: |
+      import re
+      value = vars["$VALUE"]
+      var_name = vars["$VAR"].upper()
+      secret_keywords = ["SECRET", "PASSWORD", "TOKEN", "KEY", "API", "JWT", "AUTH", "PRIVATE", "CREDENTIAL", "CERT"]
+      is_secret_var = any(keyword in var_name for keyword in secret_keywords)
+      is_real_value = len(value) > 10 and not any(placeholder in value.lower() for placeholder in ['placeholder', 'example', 'test', 'dummy', 'fake'])
+      return is_secret_var and is_real_value
+    message: "Hardcoded secret detected in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  # HARDCODED SECRETS - JAVA
+  - id: java-hardcoded-secrets-advanced
+    pattern-either:
+      - pattern: |
+          private static final String $VAR = "$VALUE";
+      - pattern: |
+          public static final String $VAR = "$VALUE";
+      - pattern: |
+          String $VAR = "$VALUE";
+      - pattern: |
+          private String $VAR = "$VALUE";
+      - pattern: |
+          public String $VAR = "$VALUE";
+    pattern-where-python: |
+      import re
+      value = vars["$VALUE"]
+      var_name = vars["$VAR"].upper()
+      secret_keywords = ["PASSWORD", "SECRET", "KEY", "TOKEN", "API", "JWT", "PRIVATE", "CREDENTIAL", "ENCRYPTION"]
+      is_secret_var = any(keyword in var_name for keyword in secret_keywords)
+      is_real_value = len(value) > 8 and not any(placeholder in value.lower() for placeholder in ['placeholder', 'example', 'test', 'dummy'])
+      return is_secret_var and is_real_value
+    message: "Hardcoded secret detected in Java"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  # HARDCODED SECRETS - GO
+  - id: go-hardcoded-secrets-advanced
+    pattern-either:
+      - pattern: |
+          const $VAR = "$VALUE"
+      - pattern: |
+          var $VAR = "$VALUE"
+      - pattern: |
+          $VAR := "$VALUE"
+    pattern-where-python: |
+      import re
+      value = vars["$VALUE"]
+      var_name = vars["$VAR"].upper()
+      secret_keywords = ["SECRET", "PASSWORD", "TOKEN", "KEY", "API", "JWT", "PRIVATE", "CREDENTIAL"]
+      is_secret_var = any(keyword in var_name for keyword in secret_keywords)
+      is_real_value = len(value) > 10 and not any(placeholder in value.lower() for placeholder in ['placeholder', 'example', 'test', 'dummy'])
+      return is_secret_var and is_real_value
+    message: "Hardcoded secret detected in Go"
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  # HARDCODED SECRETS - PHP
+  - id: php-hardcoded-secrets-advanced
+    pattern-either:
+      - pattern: |
+          $password = "$VALUE";
+      - pattern: |
+          $secret = "$VALUE";
+      - pattern: |
+          $api_key = "$VALUE";
+      - pattern: |
+          define('$VAR', '$VALUE');
+      - pattern: |
+          const $VAR = '$VALUE';
+    pattern-where-python: |
+      import re
+      value = vars["$VALUE"]
+      var_name = str(vars.get("$VAR", "")).upper()
+      secret_keywords = ["PASSWORD", "SECRET", "KEY", "TOKEN", "API", "JWT", "PRIVATE"]
+      is_secret_var = any(keyword in var_name for keyword in secret_keywords)
+      is_real_value = len(value) > 8 and not any(placeholder in value.lower() for placeholder in ['placeholder', 'example', 'test'])
+      return is_secret_var and is_real_value
+    message: "Hardcoded secret detected in PHP"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  # ===========================================
+  # CRYPTOGRAPHIC FAILURES (A02:2021)
+  # ===========================================
+
+  # WEAK CRYPTOGRAPHIC HASHES
+  - id: python-weak-crypto-hash
+    pattern-either:
+      - pattern: hashlib.md5($VAR)
+      - pattern: hashlib.sha1($VAR)
+      - pattern: hashlib.new('md5', $VAR)
+      - pattern: hashlib.new('sha1', $VAR)
+      - pattern: |
+          import md5
+          md5.new($VAR)
+    message: "Weak cryptographic hash function (MD5/SHA1) detected"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-328"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: js-weak-crypto-hash
+    pattern-either:
+      - pattern: crypto.createHash('md5')
+      - pattern: crypto.createHash('sha1')
+      - pattern: |
+          require('crypto').createHash('md5')
+      - pattern: |
+          require('crypto').createHash('sha1')
+    message: "Weak cryptographic hash function detected in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-328"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: java-weak-crypto-hash
+    pattern-either:
+      - pattern: MessageDigest.getInstance("MD5")
+      - pattern: MessageDigest.getInstance("SHA1")
+      - pattern: MessageDigest.getInstance("SHA-1")
+      - pattern: |
+          MessageDigest $MD = MessageDigest.getInstance("MD5");
+    message: "Weak cryptographic hash function detected in Java"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-328"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: go-weak-crypto-hash
+    pattern-either:
+      - pattern: md5.New()
+      - pattern: sha1.New()
+      - pattern: |
+          import "crypto/md5"
+          ...
+          md5.Sum($VAR)
+      - pattern: |
+          import "crypto/sha1"
+          ...
+          sha1.Sum($VAR)
+    message: "Weak cryptographic hash function detected in Go"
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-328"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: php-weak-crypto-hash
+    pattern-either:
+      - pattern: md5($var)
+      - pattern: sha1($var)
+      - pattern: hash('md5', $var)
+      - pattern: hash('sha1', $var)
+      - pattern: crypt($var, $salt)
+    message: "Weak cryptographic hash function detected in PHP"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-328"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  # INSECURE RANDOM NUMBER GENERATION
+  - id: python-insecure-random
+    pattern-either:
+      - pattern: random.random()
+      - pattern: random.randint(...)
+      - pattern: random.choice(...)
+      - pattern: random.randrange(...)
+      - pattern: random.uniform(...)
+      - pattern: |
+          import random
+          ...
+          random.seed($SEED)
+    message: "Insecure random number generation for cryptographic purposes"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-338"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: js-insecure-random
+    pattern-either:
+      - pattern: Math.random()
+      - pattern: |
+          Math.floor(Math.random() * $N)
+    message: "Insecure random number generation for cryptographic purposes"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-338"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: java-insecure-random
+    pattern-either:
+      - pattern: new Random()
+      - pattern: Math.random()
+      - pattern: |
+          Random $R = new Random();
+          $R.nextInt(...)
+    message: "Insecure random number generation for cryptographic purposes"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-338"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: go-insecure-random
+    pattern-either:
+      - pattern: rand.Int()
+      - pattern: rand.Intn(...)
+      - pattern: rand.Float32()
+      - pattern: rand.Float64()
+      - pattern: |
+          import "math/rand"
+          ...
+          rand.Seed($SEED)
+    message: "Insecure random number generation for cryptographic purposes"
+    languages: [go]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-338"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  # WEAK ENCRYPTION
+  - id: python-weak-encryption
+    pattern-either:
+      - pattern: |
+          from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+          cipher = Cipher(algorithms.DES($KEY), ...)
+      - pattern: |
+          Cipher(algorithms.TripleDES($KEY), ...)
+      - pattern: |
+          from Crypto.Cipher import DES
+          DES.new($KEY, ...)
+      - pattern: |
+          from Crypto.Cipher import ARC4
+          ARC4.new($KEY)
+    message: "Weak encryption algorithm detected"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-327"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  - id: java-weak-encryption
+    pattern-either:
+      - pattern: Cipher.getInstance("DES")
+      - pattern: Cipher.getInstance("DESede")
+      - pattern: Cipher.getInstance("RC4")
+      - pattern: Cipher.getInstance("RC2")
+      - pattern: |
+          Cipher $C = Cipher.getInstance("DES/ECB/PKCS5Padding");
+    message: "Weak encryption algorithm detected in Java"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-327"]
+      owasp: "A02:2021 – Cryptographic Failures"
+
+  # ===========================================
+  # PATH TRAVERSAL VULNERABILITIES (A01:2021)
+  # ===========================================
+
+  # PATH TRAVERSAL - PYTHON
+  - id: python-path-traversal-advanced
+    pattern-either:
+      - pattern: open($VAR + $PATH)
+      - pattern: open($PATH + $VAR)
+      - pattern: open(f"...{$VAR}...")
+      - pattern: |
+          with open($VAR + $PATH) as $F:
+      - pattern: |
+          pathlib.Path($VAR + $PATH)
+      - pattern: |
+          os.path.join($BASE, $VAR)
+      - patterns:
+        - pattern: open($PATH)
+        - metavariable-regex:
+            metavariable: $PATH
+            regex: ".*\\.\\./.*"
+    message: "Path traversal vulnerability detected in Python"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # PATH TRAVERSAL - JAVASCRIPT
+  - id: js-path-traversal-advanced
+    pattern-either:
+      - pattern: fs.readFile($VAR + $PATH)
+      - pattern: fs.readFileSync($VAR + $PATH)
+      - pattern: fs.readFile(`${$VAR}${$PATH}`)
+      - pattern: fs.readFileSync(`${$VAR}${$PATH}`)
+      - pattern: fs.writeFile($VAR + $PATH, ...)
+      - pattern: fs.createReadStream($VAR + $PATH)
+      - pattern: path.join($BASE, $VAR)
+      - pattern: |
+          require('fs').readFile($VAR + $PATH)
+    message: "Path traversal vulnerability detected in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # PATH TRAVERSAL - JAVA
+  - id: java-path-traversal-advanced
+    pattern-either:
+      - pattern: new File($VAR + $PATH)
+      - pattern: new FileInputStream($VAR + $PATH)
+      - pattern: new FileOutputStream($VAR + $PATH)
+      - pattern: Files.readString(Paths.get($VAR + $PATH))
+      - pattern: Files.readAllBytes(Paths.get($VAR + $PATH))
+      - pattern: |
+          new FileReader($VAR + $PATH)
+      - pattern: |
+          new FileWriter($VAR + $PATH)
+    message: "Path traversal vulnerability detected in Java"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # PATH TRAVERSAL - GO
+  - id: go-path-traversal-advanced
+    pattern-either:
+      - pattern: |
+          $PATH := $VAR + "..."
+          os.Open($PATH)
+      - pattern: |
+          $PATH := "..." + $VAR + "..."
+          os.Open($PATH)
+      - pattern: os.Open($VAR + "...")
+      - pattern: os.Open("..." + $VAR + "...")
+      - pattern: ioutil.ReadFile($VAR + $PATH)
+      - pattern: os.OpenFile($VAR + $PATH, ...)
+      - pattern: filepath.Join($BASE, $VAR)
+    message: "Path traversal vulnerability detected in Go"
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # PATH TRAVERSAL - PHP
+  - id: php-path-traversal-advanced
+    pattern-either:
+      - pattern: include($var)
+      - pattern: require($var)
+      - pattern: include_once($var)
+      - pattern: require_once($var)
+      - pattern: file_get_contents($var)
+      - pattern: fopen($var, "...")
+      - pattern: readfile($var)
+      - pattern: file($var)
+      - pattern: |
+          include($_GET[$key])
+      - pattern: |
+          require($_POST[$key])
+    message: "Path traversal vulnerability detected in PHP"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-22"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # ===========================================
+  # DESERIALIZATION VULNERABILITIES (A08:2021)
+  # ===========================================
+
+  # UNSAFE DESERIALIZATION - PYTHON
+  - id: python-unsafe-deserialization-advanced
+    pattern-either:
+      - patterns:
+        - pattern: pickle.loads($VAR)
+        - pattern-not: pickle.loads($LITERAL)
+      - pattern: pickle.load($FILE)
+      - pattern: cPickle.loads($VAR)
+      - pattern: |
+          import dill
+          dill.loads($VAR)
+      - pattern: |
+          import joblib
+          joblib.load($VAR)
+    message: "Unsafe deserialization detected in Python"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+
+  # UNSAFE DESERIALIZATION - JAVA
+  - id: java-unsafe-deserialization-advanced
+    pattern-either:
+      - pattern: |
+          ObjectInputStream $OIS = new ObjectInputStream($INPUT);
+          $OIS.readObject()
+      - pattern: |
+          new ObjectInputStream($INPUT).readObject()
+      - pattern: |
+          $OIS.readUnshared()
+      - pattern: |
+          XMLDecoder $DECODER = new XMLDecoder($INPUT);
+          $DECODER.readObject()
+    message: "Unsafe deserialization detected in Java"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+
+  # UNSAFE YAML LOADING
+  - id: python-yaml-unsafe-loading
+    pattern-either:
+      - pattern: yaml.load($VAR)
+      - pattern: yaml.load($VAR, Loader=yaml.Loader)
+      - pattern: yaml.load($VAR, Loader=yaml.UnsafeLoader)
+      - pattern: yaml.load($VAR, Loader=yaml.FullLoader)
+      - pattern: |
+          import yaml
+          yaml.load($VAR)
+    message: "Unsafe YAML loading detected - use yaml.safe_load instead"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+
+  - id: js-yaml-unsafe-loading
+    pattern-either:
+      - pattern: yaml.load($VAR)
+      - pattern: yaml.safeLoad($VAR)
+      - pattern: |
+          require('js-yaml').load($VAR)
+    message: "Unsafe YAML loading detected in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+
+  # ===========================================
+  # XXE VULNERABILITIES (A05:2021)
+  # ===========================================
+
+  # XXE - JAVA
+  - id: java-xxe-vulnerability-advanced
+    pattern-either:
+      - pattern: DocumentBuilderFactory.newInstance()
+      - pattern: SAXParserFactory.newInstance()
+      - pattern: XMLInputFactory.newInstance()
+      - pattern: TransformerFactory.newInstance()
+      - pattern: SchemaFactory.newInstance(...)
+      - pattern: |
+          DocumentBuilderFactory $DBF = DocumentBuilderFactory.newInstance();
+          $DBF.newDocumentBuilder()
+    message: "Potential XXE vulnerability - XML parser not configured securely"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-611"]
+      owasp: "A05:2021 – Security Misconfiguration"
+
+  # XXE - PYTHON
+  - id: python-xxe-vulnerability
+    pattern-either:
+      - pattern: |
+          from xml.etree.ElementTree import parse
+          parse($VAR)
+      - pattern: |
+          import xml.etree.ElementTree as ET
+          ET.parse($VAR)
+      - pattern: |
+          from xml.sax import parse
+          parse($VAR, ...)
+      - pattern: |
+          from xml.dom.minidom import parse
+          parse($VAR)
+    message: "Potential XXE vulnerability in Python XML parsing"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-611"]
+      owasp: "A05:2021 – Security Misconfiguration"
+
+  # ===========================================
+  # MEMORY SAFETY ISSUES - C/C++
+  # ===========================================
+
+  # BUFFER OVERFLOW
+  - id: cpp-buffer-overflow-advanced
+    pattern-either:
+      - pattern: strcpy($DEST, $SRC)
+      - pattern: strcat($DEST, $SRC)
+      - pattern: gets($BUFFER)
+      - pattern: sprintf($BUFFER, $FORMAT, ...)
+      - pattern: scanf("%s", $BUFFER)
+      - pattern: strncpy($DEST, $SRC, $SIZE)
+      - pattern: strncat($DEST, $SRC, $SIZE)
+      - pattern: memcpy($DEST, $SRC, $SIZE)
+      - pattern: memmove($DEST, $SRC, $SIZE)
+    message: "Buffer overflow vulnerability detected"
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-120"]
+      owasp: "A06:2021 – Vulnerable and Outdated Components"
+
+  # FORMAT STRING VULNERABILITIES
+  - id: cpp-format-string-advanced
+    pattern-either:
+      - pattern: printf($VAR)
+      - pattern: fprintf($FILE, $VAR)
+      - pattern: sprintf($BUFFER, $VAR)
+      - pattern: snprintf($BUFFER, $SIZE, $VAR)
+      - pattern: syslog($PRIORITY, $VAR)
+      - pattern: err($CODE, $VAR)
+      - pattern: warn($VAR)
+    message: "Format string vulnerability detected"
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-134"]
+      owasp: "A03:2021 – Injection"
+
+  # USE AFTER FREE
+  - id: cpp-use-after-free-advanced
+    patterns:
+      - pattern-either:
+        - pattern: |
+            free($PTR);
+            ...
+            $PTR->...
+        - pattern: |
+            delete $PTR;
+            ...
+            $PTR->...
+        - pattern: |
+            free($PTR);
+            ...
+            *$PTR
+        - pattern: |
+            delete[] $PTR;
+            ...
+            $PTR[...]
+    message: "Use after free vulnerability detected"
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-416"]
+      owasp: "A06:2021 – Vulnerable and Outdated Components"
+
+  # MEMORY LEAKS
+  - id: cpp-memory-leak-advanced
+    patterns:
+      - pattern-either:
+        - patterns:
+          - pattern: |
+              $PTR = malloc(...);
+          - pattern-not: |
+              $PTR = malloc(...);
+              ...
+              free($PTR);
+        - patterns:
+          - pattern: |
+              $PTR = new ...;
+          - pattern-not: |
+              $PTR = new ...;
+              ...
+              delete $PTR;
+        - patterns:
+          - pattern: |
+              $PTR = new $TYPE[...];
+          - pattern-not: |
+              $PTR = new $TYPE[...];
+              ...
+              delete[] $PTR;
+    message: "Potential memory leak detected"
+    languages: [c, cpp]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-401"]
+      owasp: "A06:2021 – Vulnerable and Outdated Components"
+
+  # NULL POINTER DEREFERENCE
+  - id: cpp-null-dereference-advanced
+    pattern-either:
+      - patterns:
+        - pattern: |
+            $PTR = NULL;
+            ...
+            $PTR->...
+      - patterns:
+        - pattern: |
+            $PTR = nullptr;
+            ...
+            $PTR->...
+      - patterns:
+        - pattern: |
+            if ($PTR == NULL) return;
+            ...
+            $PTR->...
+    message: "Null pointer dereference vulnerability detected"
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-476"]
+      owasp: "A06:2021 – Vulnerable and Outdated Components"
+
+  # ===========================================
+  # ADVANCED VULNERABILITY PATTERNS
+  # ===========================================
+
+  # SSRF - Server-Side Request Forgery
+  - id: python-ssrf-vulnerability
+    pattern-either:
+      - pattern: |
+          import requests
+          requests.get($VAR)
+      - pattern: |
+          import urllib.request
+          urllib.request.urlopen($VAR)
+      - pattern: |
+          import httplib2
+          httplib2.Http().request($VAR, ...)
+    message: "Potential SSRF vulnerability - unvalidated URL request"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-918"]
+      owasp: "A10:2021 – Server-Side Request Forgery"
+
+  - id: js-ssrf-vulnerability
+    pattern-either:
+      - pattern: |
+          fetch($VAR)
+      - pattern: |
+          axios.get($VAR)
+      - pattern: |
+          request($VAR, ...)
+      - pattern: |
+          http.get($VAR, ...)
+      - pattern: |
+          https.get($VAR, ...)
+    message: "Potential SSRF vulnerability in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-918"]
+      owasp: "A10:2021 – Server-Side Request Forgery"
+
+  # REGEX DOS (ReDoS)
+  - id: js-regex-dos-advanced
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $REGEX = /$PATTERN/;
+            $REGEX.test($INPUT)
+        - pattern: |
+            new RegExp('$PATTERN').test($INPUT)
+        - pattern: |
+            $INPUT.match(/$PATTERN/)
+      - metavariable-regex:
+          metavariable: $PATTERN
+          regex: ".*(\\+|\\*).*\\1.*"
+    message: "Potential ReDoS (Regular expression Denial of Service) vulnerability"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-1333"]
+      owasp: "A06:2021 – Vulnerable and Outdated Components"
+
+  # PROTOTYPE POLLUTION
+  - id: js-prototype-pollution-advanced
+    pattern-either:
+      - pattern: |
+          $OBJ[$KEY] = $VALUE
+      - pattern: |
+          $OBJ["__proto__"] = $VALUE
+      - pattern: |
+          $OBJ.constructor.prototype = $VALUE
+      - pattern: |
+          Object.assign($TARGET, $SOURCE)
+      - pattern: |
+          Object.merge($TARGET, $SOURCE)
+      - pattern: |
+          _.merge($TARGET, $SOURCE)
+    pattern-where-python: |
+      key = str(vars.get("$KEY", ""))
+      return "__proto__" in key or "constructor" in key or "prototype" in key
+    message: "Prototype pollution vulnerability detected"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-1321"]
+      owasp: "A06:2021 – Vulnerable and Outdated Components"
+
+  # INSECURE DIRECT OBJECT REFERENCE
+  - id: python-idor-vulnerability
+    pattern-either:
+      - pattern: |
+          $MODEL.objects.get(id=$VAR)
+      - pattern: |
+          $MODEL.objects.filter(id=$VAR)
+      - pattern: |
+          User.objects.get(id=request.GET.get('id'))
+      - pattern: |
+          $MODEL.get($VAR)
+    message: "Potential Insecure Direct Object Reference (IDOR) vulnerability"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-639"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # TLS/SSL VULNERABILITIES
+  - id: python-insecure-tls
+    pattern-either:
+      - pattern: |
+          import ssl
+          ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+          ...
+          ssl.CERT_NONE
+      - pattern: |
+          ssl._create_unverified_context()
+      - pattern: |
+          requests.get($URL, verify=False)
+      - pattern: |
+          urllib3.disable_warnings()
+    message: "Insecure TLS/SSL configuration detected"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-295"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  - id: go-insecure-tls-advanced
+    pattern-either:
+      - pattern: |
+          tls.Config{
+            ...,
+            InsecureSkipVerify: true,
+            ...
+          }
+      - pattern: |
+          &tls.Config{
+            ...,
+            InsecureSkipVerify: true,
+            ...
+          }
+      - pattern: |
+          tls.Config{
+            ...,
+            MinVersion: tls.VersionSSL30,
+            ...
+          }
+    message: "Insecure TLS configuration detected in Go"
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-295"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  # RACE CONDITIONS
+  - id: cpp-race-condition-advanced
+    patterns:
+      - pattern-either:
+        - patterns:
+          - pattern: |
+              pthread_mutex_lock(&$MUTEX);
+              ...
+              $SHARED_VAR = ...;
+          - pattern-not: |
+              pthread_mutex_lock(&$MUTEX);
+              ...
+              $SHARED_VAR = ...;
+              ...
+              pthread_mutex_unlock(&$MUTEX);
+        - patterns:
+          - pattern: |
+              std::lock_guard<std::mutex> $GUARD($MUTEX);
+              ...
+              $SHARED_VAR = ...;
+    message: "Potential race condition detected"
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-362"]
+      owasp: "A04:2021 – Insecure Design"
+
+  # INTEGER OVERFLOW
+  - id: cpp-integer-overflow-advanced
+    pattern-either:
+      - patterns:
+        - pattern: |
+            int $VAR = $EXPR;
+        - metavariable-regex:
+            metavariable: $EXPR
+            regex: ".*\\*.*"
+      - patterns:
+        - pattern: |
+            unsigned int $VAR = $EXPR;
+        - metavariable-regex:
+            metavariable: $EXPR
+            regex: ".*(\\+|\\*).*"
+      - pattern: |
+          $VAR + $OTHER
+      - pattern: |
+          $VAR * $OTHER
+    message: "Potential integer overflow vulnerability"
+    languages: [c, cpp]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-190"]
+      owasp: "A06:2021 – Vulnerable and Outdated Components"
+
+  # CSRF TOKEN BYPASS
+  - id: python-csrf-bypass
+    pattern-either:
+      - pattern: |
+          @csrf_exempt
+          def $FUNC(...):
+      - pattern: |
+          csrf_exempt($VIEW)
+      - pattern: |
+          request.META.get('HTTP_X_CSRFTOKEN') != $TOKEN
+    message: "CSRF protection bypassed or missing"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-352"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # AUTHENTICATION BYPASS
+  - id: python-auth-bypass
+    pattern-either:
+      - pattern: |
+          if request.user.is_authenticated:
+              pass
+          else:
+              # Missing return or redirect
+              ...
+      - pattern: |
+          @login_required
+          def $FUNC(...):
+              # Missing implementation
+              pass
+    message: "Authentication bypass vulnerability detected"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-287"]
+      owasp: "A07:2021 – Identification and Authentication Failures"
+
+  # LOGGING INJECTION
+  - id: python-log-injection
+    pattern-either:
+      - pattern: |
+          logger.info(f"User: {$USER_INPUT}")
+      - pattern: |
+          logger.error("Error: " + $USER_INPUT)
+      - pattern: |
+          print(f"Debug: {$USER_INPUT}")
+    message: "Log injection vulnerability - unsanitized user input in logs"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-117"]
+      owasp: "A09:2021 – Security Logging and Monitoring Failures"
+
+  # OPEN REDIRECT
+  - id: python-open-redirect
+    pattern-either:
+      - pattern: |
+          redirect($VAR)
+      - pattern: |
+          HttpResponseRedirect($VAR)
+      - pattern: |
+          return redirect(request.GET.get('next'))
+    message: "Open redirect vulnerability detected"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-601"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  - id: js-open-redirect
+    pattern-either:
+      - pattern: |
+          window.location = $VAR;
+      - pattern: |
+          window.location.href = $VAR;
+      - pattern: |
+          document.location = $VAR;
+      - pattern: |
+          location.replace($VAR);
+    message: "Open redirect vulnerability in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-601"]
+      owasp: "A01:2021 – Broken Access Control"
+
+  # FILE UPLOAD VULNERABILITIES
+  - id: python-unrestricted-file-upload
+    pattern-either:
+      - pattern: |
+          $FILE.save($PATH)
+      - pattern: |
+          with open($PATH, 'wb') as $F:
+              $F.write($FILE_CONTENT)
+      - pattern: |
+          shutil.move($UPLOADED_FILE, $DEST)
+    message: "Unrestricted file upload vulnerability"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-434"]
+      owasp: "A04:2021 – Insecure Design"
+
+  # TEMPLATE INJECTION
+  - id: python-template-injection
+    pattern-either:
+      - pattern: |
+          render_template_string($VAR)
+      - pattern: |
+          Template($VAR).render(...)
+      - pattern: |
+          jinja2.Template($VAR)
+    message: "Server-Side Template Injection (SSTI) vulnerability"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-94"]
+      owasp: "A03:2021 – Injection"
+
+  # MASS ASSIGNMENT
+  - id: python-mass-assignment
+    pattern-either:
+      - pattern: |
+          $MODEL.objects.create(**request.POST)
+      - pattern: |
+          $SERIALIZER = $SERIALIZER_CLASS(data=request.data)
+      - pattern: |
+          $FORM = $FORM_CLASS(request.POST)
+    message: "Mass assignment vulnerability detected"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-915"]
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+
+  # NOSQL INJECTION
+  - id: python-nosql-injection
+    pattern-either:
+      - pattern: |
+          $COLLECTION.find({"$KEY": $VAR})
+      - pattern: |
+          $COLLECTION.find_one({"$KEY": $VAR})
+      - pattern: |
+          db.$COLLECTION.find({"$KEY": $VAR})
+    message: "NoSQL injection vulnerability detected"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-943"]
+      owasp: "A03:2021 – Injection"
+
+  - id: js-nosql-injection
+    pattern-either:
+      - pattern: |
+          $COLLECTION.find({"$KEY": $VAR})
+      - pattern: |
+          $COLLECTION.findOne({"$KEY": $VAR})
+      - pattern: |
+          db.collection('$COLL').find({"$KEY": $VAR})
+    message: "NoSQL injection vulnerability in JavaScript"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-943"]
+      owasp: "A03:2021 – Injection"
+
+  # ADDITIONAL LANGUAGE-SPECIFIC PATTERNS
+  
+  # RUBY VULNERABILITIES
+  - id: ruby-command-injection
+    pattern-either:
+      - pattern: system($var)
+      - pattern: exec($var)
+      - pattern: "`$var`"
+      - pattern: "%x[$var]"
+      - pattern: spawn($var)
+    message: "Command injection vulnerability in Ruby"
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  - id: ruby-sql-injection
+    pattern-either:
+      - pattern: |
+          $MODEL.where("... #{$var} ...")
+      - pattern: |
+          $MODEL.find_by_sql("... #{$var} ...")
+      - pattern: |
+          ActiveRecord::Base.connection.execute("... #{$var} ...")
+    message: "SQL injection vulnerability in Ruby"
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  - id: ruby-yaml-deserialization
+    pattern-either:
+      - pattern: YAML.load($var)
+      - pattern: YAML::load($var)
+      - pattern: Psych.load($var)
+    message: "Unsafe YAML deserialization in Ruby"
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-502"]
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+
+  # C# VULNERABILITIES  
+  - id: csharp-sql-injection
+    pattern-either:
+      - pattern: |
+          $QUERY = "... " + $VAR + " ...";
+          $COMMAND.CommandText = $QUERY;
+      - pattern: |
+          new SqlCommand("... " + $VAR + " ...", $CONN)
+      - pattern: |
+          String.Format("... {0} ...", $VAR)
+    message: "SQL injection vulnerability in C#"
+    languages: [csharp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  - id: csharp-command-injection
+    pattern-either:
+      - pattern: Process.Start($VAR)
+      - pattern: |
+          new ProcessStartInfo($VAR)
+      - pattern: |
+          Process.Start("cmd.exe", "/c " + $VAR)
+    message: "Command injection vulnerability in C#"
+    languages: [csharp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  # FINAL COMPREHENSIVE DETECTION RULES
+  # These catch edge cases and variations of common vulnerabilities
+
+  # CATCH-ALL SQL INJECTION PATTERNS
+  - id: generic-sql-injection-pattern
+    pattern-either:
+      - patterns:
+        - pattern-regex: ".*\\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER)\\b.*"
+        - pattern-regex: ".*\\+.*"
+        - pattern-regex: ".*%[sd].*"
+    message: "Potential SQL injection pattern detected"
+    languages: [python, javascript, typescript, java, go, php, ruby, csharp]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-89"]
+      owasp: "A03:2021 – Injection"
+
+  # CATCH-ALL COMMAND EXECUTION PATTERNS
+  - id: generic-command-execution-pattern
+    pattern-regex: ".*(exec|system|shell|cmd|command|spawn|popen).*\\(.*\\+.*\\)"
+    message: "Potential command execution with user input detected"
+    languages: [python, javascript, typescript, java, go, php, ruby, csharp]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-78"]
+      owasp: "A03:2021 – Injection"
+
+  # CATCH-ALL HARDCODED SECRETS PATTERNS
+  - id: generic-hardcoded-secrets-pattern
+    pattern-regex: ".*(password|secret|key|token|api).*=.*[\"'][a-zA-Z0-9_-]{12,}[\"']"
+    message: "Potential hardcoded secret detected"
+    languages: [python, javascript, typescript, java, go, php, ruby, csharp]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-798"]
+      owasp: "A07:2021 – Identification and Authentication Failures"

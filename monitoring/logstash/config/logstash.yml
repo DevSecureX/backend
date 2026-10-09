@@ -1,0 +1,7 @@
+# DevSecureX Logstash Configuration
+http.host: "0.0.0.0"
+xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch:9200"]
+path.config: "/usr/share/logstash/pipeline"
+path.data: "/usr/share/logstash/data"
+pipeline.workers: 2
+pipeline.batch.size: 1000

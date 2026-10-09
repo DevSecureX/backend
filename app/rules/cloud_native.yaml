@@ -1,0 +1,225 @@
+rules:
+  # Cloud Native & Kubernetes Security Rules
+
+  - id: k8s-privileged-container
+    languages: [yaml]
+    severity: CRITICAL
+    message: Container running in privileged mode
+    pattern: |
+      securityContext:
+        ...
+        privileged: true
+    fix: Remove privileged flag or use specific capabilities
+
+  - id: k8s-no-resource-limits
+    languages: [yaml]
+    severity: HIGH
+    message: Container without resource limits can DoS the cluster
+    pattern: |
+      containers:
+        - name: $NAME
+          ...
+    pattern-not: |
+      containers:
+        - name: $NAME
+          ...
+          resources:
+            limits:
+              ...
+    fix: Set CPU and memory limits
+
+  - id: k8s-host-network
+    languages: [yaml]
+    severity: HIGH
+    message: Pod using host network namespace
+    pattern: |
+      spec:
+        ...
+        hostNetwork: true
+    fix: Use cluster networking unless absolutely necessary
+
+  - id: k8s-default-serviceaccount
+    languages: [yaml]
+    severity: WARNING
+    message: Using default service account
+    pattern: |
+      spec:
+        ...
+    pattern-not: |
+      spec:
+        ...
+        serviceAccountName: ...
+    fix: Create and use specific service accounts
+
+  - id: k8s-latest-image-tag
+    languages: [yaml]
+    severity: WARNING
+    message: Using 'latest' tag prevents reproducible deployments
+    pattern: |
+      image: $IMAGE:latest
+    fix: Use specific version tags
+
+  - id: docker-run-as-root
+    languages: [dockerfile]
+    severity: HIGH
+    message: Container runs as root user
+    patterns:
+      - pattern: |
+          FROM $IMAGE
+      - pattern-not-inside: |
+          USER $NONROOT
+    fix: Add USER directive to run as non-root
+
+  - id: docker-sudo-installed
+    languages: [dockerfile]
+    severity: WARNING
+    message: sudo installed in container increases attack surface
+    pattern-either:
+      - pattern: RUN apt-get install ... sudo ...
+      - pattern: RUN yum install ... sudo ...
+    fix: Remove sudo from production containers
+
+  - id: terraform-public-s3-bucket
+    languages: [hcl]
+    severity: CRITICAL
+    message: S3 bucket allows public access
+    pattern: |
+      resource "aws_s3_bucket" $NAME {
+        ...
+        acl = "public-read"
+        ...
+      }
+    fix: Use private ACL and bucket policies
+
+  - id: terraform-unencrypted-storage
+    languages: [hcl]
+    severity: HIGH
+    message: Storage not encrypted at rest
+    pattern: |
+      resource $RESOURCE $NAME {
+        ...
+      }
+    pattern-not: |
+      resource $RESOURCE $NAME {
+        ...
+        encryption_at_rest_enabled = true
+        ...
+      }
+    fix: Enable encryption for all storage resources
+
+  - id: terraform-security-group-open
+    languages: [hcl]
+    severity: CRITICAL
+    message: Security group allows unrestricted access
+    pattern: |
+      ingress {
+        ...
+        cidr_blocks = ["0.0.0.0/0"]
+        ...
+      }
+    fix: Restrict to specific IP ranges
+
+  - id: helm-hardcoded-secrets
+    languages: [yaml]
+    severity: CRITICAL
+    message: Hardcoded secrets in Helm values
+    pattern-either:
+      - pattern: 'password: "..."'
+      - pattern: 'apiKey: "..."'
+      - pattern: 'secret: "..."'
+    fix: Use Kubernetes secrets or external secret management
+
+  - id: istio-mtls-disabled
+    languages: [yaml]
+    severity: HIGH
+    message: mTLS disabled in service mesh
+    pattern: |
+      spec:
+        mtls:
+          mode: DISABLE
+    fix: Enable STRICT or PERMISSIVE mTLS mode
+
+  - id: prometheus-metrics-exposed
+    languages: [yaml]
+    severity: WARNING
+    message: Metrics endpoint exposed without authentication
+    pattern: |
+      path: /metrics
+    pattern-not-inside: |
+      annotations:
+        ...
+        prometheus.io/scrape: "false"
+    fix: Protect metrics endpoints or disable scraping
+
+  - id: eks-public-endpoint
+    languages: [yaml, json]
+    severity: HIGH
+    message: EKS cluster endpoint is public
+    pattern: |
+      endpointPublicAccess: true
+    pattern-not: |
+      endpointPublicAccessCidrs: [...]
+    fix: Restrict public access with CIDR blocks
+
+  - id: gke-basic-auth-enabled
+    languages: [yaml, json]
+    severity: CRITICAL
+    message: Basic auth enabled on GKE cluster
+    pattern: |
+      masterAuth:
+        username: ...
+        password: ...
+    fix: Disable basic auth and use proper RBAC
+
+  - id: container-capabilities-add
+    languages: [yaml]
+    severity: HIGH
+    message: Container adding dangerous capabilities
+    pattern: |
+      securityContext:
+        capabilities:
+          add:
+            - $CAP
+    fix: Remove unnecessary capabilities
+
+  - id: configmap-sensitive-data
+    languages: [yaml]
+    severity: HIGH
+    message: Sensitive data in ConfigMap
+    pattern-either:
+      - pattern: |
+          kind: ConfigMap
+          ...
+          data:
+            ...
+            password: ...
+      - pattern: |
+          kind: ConfigMap
+          ...
+          data:
+            ...
+            private_key: ...
+    fix: Use Secrets instead of ConfigMaps for sensitive data
+
+  - id: service-mesh-bypass
+    languages: [yaml]
+    severity: WARNING
+    message: Service bypassing mesh security policies
+    pattern: |
+      annotations:
+        sidecar.istio.io/inject: "false"
+    fix: Enable sidecar injection for security policies
+
+  - id: networkpolicy-missing
+    languages: [yaml]
+    severity: WARNING
+    message: Namespace without NetworkPolicy allows all traffic
+    pattern: |
+      kind: Namespace
+      metadata:
+        name: $NS
+    pattern-not-inside: |
+      kind: NetworkPolicy
+      metadata:
+        namespace: $NS
+    fix: Define NetworkPolicies for traffic control

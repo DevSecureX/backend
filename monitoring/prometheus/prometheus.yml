@@ -1,0 +1,146 @@
+# DevSecureX Prometheus Configuration
+# Comprehensive metrics collection for all optimization phases
+
+global:
+  scrape_interval: 15s      # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s  # Evaluate rules every 15 seconds. The default is every 1 minute.
+  external_labels:
+    cluster: 'devsecurex-production'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+scrape_configs:
+  # DevSecureX Backend - Main Application
+  - job_name: 'devsecurex-backend'
+    static_configs:
+      - targets: ['172.19.0.1:8010']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    honor_labels: true
+    
+  # DevSecureX Backend - Authenticated Monitoring
+  - job_name: 'devsecurex-monitoring'
+    static_configs:
+      - targets: ['172.19.0.1:8010']
+    metrics_path: '/monitoring/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s
+    honor_labels: true
+    
+  # System Health Monitoring
+  - job_name: 'devsecurex-health'
+    static_configs:
+      - targets: ['172.19.0.1:8010']
+    metrics_path: '/monitoring/health/detailed'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    
+  # Database Monitoring
+  - job_name: 'devsecurex-database'
+    static_configs:
+      - targets: ['172.19.0.1:8010']
+    metrics_path: '/monitoring/database/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s
+    
+  # Task System Monitoring
+  - job_name: 'devsecurex-tasks'
+    static_configs:
+      - targets: ['172.19.0.1:8010']
+    metrics_path: '/monitoring/tasks/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Node Exporter - System Metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    
+  # cAdvisor - Container Metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    
+  # Redis Monitoring
+  - job_name: 'redis-monitoring'
+    static_configs:
+      - targets: ['redis-monitoring:6379']
+    scrape_interval: 15s
+    
+  # Prometheus Self-Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    
+  # Push Gateway for Batch Jobs
+  - job_name: 'pushgateway'
+    static_configs:
+      - targets: ['pushgateway:9091']
+    scrape_interval: 15s
+    honor_labels: true
+
+  # Custom Security Scan Metrics
+  - job_name: 'devsecurex-scans'
+    static_configs:
+      - targets: ['172.19.0.1:8010']
+    metrics_path: '/monitoring/scans/metrics'
+    scrape_interval: 20s
+    scrape_timeout: 10s
+
+  # SLA Performance Analytics
+  - job_name: 'devsecurex-sla'
+    static_configs:
+      - targets: ['172.19.0.1:8010']
+    metrics_path: '/monitoring/sla/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+# Recording rules for performance optimization
+recording_rules:
+  - name: devsecurex.performance
+    rules:
+      # HTTP Request Rate
+      - record: devsecurex:http_request_rate5m
+        expr: rate(http_requests_total[5m])
+        
+      # HTTP Error Rate
+      - record: devsecurex:http_error_rate5m
+        expr: rate(http_requests_total{status_code=~"4..|5.."}[5m]) / rate(http_requests_total[5m])
+        
+      # Database Connection Utilization
+      - record: devsecurex:db_connection_utilization
+        expr: db_pool_checked_out_connections / db_pool_size_total * 100
+        
+      # Cache Hit Rate
+      - record: devsecurex:cache_hit_rate
+        expr: rate(cache_operations_total{result="hit"}[5m]) / rate(cache_operations_total[5m]) * 100
+        
+      # Task Queue Utilization
+      - record: devsecurex:task_queue_utilization
+        expr: task_queue_size_current / task_queue_max_size * 100
+        
+      # System Health Score
+      - record: devsecurex:system_health_score
+        expr: min(sla_compliance_percentage)
+
+# Remote write configuration (optional - for long-term storage)
+# remote_write:
+#   - url: "https://your-remote-prometheus-endpoint/api/v1/write"
+#     basic_auth:
+#       username: "your-username"
+#       password: "your-password"

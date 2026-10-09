@@ -1,0 +1,76 @@
+# FastAPI and server
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+
+# Database & ORM
+sqlalchemy[asyncio]==2.0.41
+asyncpg==0.29.0
+alembic==1.14.0
+
+# Auth & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0  # Pin bcrypt to 4.3.0 for passlib 1.7.4 compatibility (bcrypt 5.0.0+ breaks passlib)
+PyJWT==2.10.1
+authlib==1.3.1
+
+# Redis caching with connection pooling
+redis[hiredis]==5.2.1
+
+# HTTP client with async support
+httpx[http2]==0.28.1
+
+# FastAPI forms and file handling
+python-multipart==0.0.20
+
+# Email validation and sending
+email-validator==2.2.0
+sendgrid==6.12.4
+
+# Payment gateway
+razorpay==1.4.2
+jaraco.text==3.12.0
+platformdirs==4.3.6
+
+# GitHub integration
+pygithub==2.4.0
+
+# Encryption and security
+cryptography==43.0.3
+
+# Essential utilities
+setuptools==75.6.0
+python-dotenv==1.0.1
+
+# Scanning tools
+semgrep==1.134.0
+bandit[toml]==1.7.9
+checkov==2.3.228
+safety==3.2.7
+
+# String similarity for enhanced analysis (without scipy dependency)
+python-Levenshtein==0.26.1
+
+# AI integration
+openai==1.97.1
+
+# WebSocket and real-time communication
+python-socketio==5.10.0
+websockets==12.0
+
+# System monitoring and performance
+psutil==6.0.0
+prometheus-client==0.21.1
+
+# Production logging and monitoring
+structlog==24.4.0
+sentry-sdk[fastapi]==2.22.0
+
+# Background task processing
+celery[redis]==5.4.0
+
+# Templating (jinja2 for reports)
+jinja2==3.1.6
+
+# Production WSGI/ASGI server
+gunicorn==23.0.0

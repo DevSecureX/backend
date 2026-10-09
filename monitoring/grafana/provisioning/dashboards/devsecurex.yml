@@ -1,0 +1,25 @@
+# DevSecureX Dashboard Provisioning Configuration
+apiVersion: 1
+
+providers:
+  - name: 'DevSecureX Dashboards'
+    orgId: 1
+    folder: 'DevSecureX'
+    folderUid: 'devsecurex'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/devsecurex
+      
+  - name: 'DevSecureX System Dashboards'
+    orgId: 1
+    folder: 'DevSecureX System'
+    folderUid: 'devsecurex-system'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/system

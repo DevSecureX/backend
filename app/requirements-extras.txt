@@ -1,0 +1,26 @@
+# Optional features and advanced functionality (~400MB)
+
+# Payment gateway
+razorpay==1.4.2
+
+# GitHub integration
+pygithub==2.4.0
+
+# Email sending service
+sendgrid==6.12.4
+
+# WebSocket and real-time communication
+python-socketio==5.10.0
+websockets==12.0
+
+# Metrics collection for monitoring
+prometheus-client==0.21.1
+
+# Error tracking (optional)
+sentry-sdk[fastapi]==2.22.0
+
+# Background task processing for advanced workflows
+celery[redis]==5.4.0
+
+# PDF export and advanced reporting
+weasyprint==66.0

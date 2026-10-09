@@ -1,0 +1,1 @@
+# Support module for help and customer service functionality

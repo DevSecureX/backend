@@ -1,0 +1,206 @@
+rules:
+  # API Security Rules for REST, GraphQL, gRPC
+
+  - id: graphql-introspection-enabled
+    languages: [javascript, typescript, python]
+    severity: HIGH
+    message: GraphQL introspection enabled in production
+    pattern-either:
+      - pattern: "introspection: true"
+      - pattern: "__schema"
+      - pattern: "enableIntrospection: true"
+    fix: Disable introspection in production environments
+
+  - id: graphql-depth-limit-missing
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: GraphQL query depth limit not configured
+    pattern: |
+      new GraphQLServer({
+        ...
+      })
+    pattern-not: |
+      new GraphQLServer({
+        ...
+        validationRules: [depthLimit($DEPTH)]
+        ...
+      })
+    fix: Add depth limiting to prevent DoS attacks
+
+  - id: graphql-query-complexity
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: GraphQL query complexity not limited
+    pattern: |
+      resolvers: {
+        ...
+      }
+    pattern-not-inside: |
+      plugins: [
+        ...
+        costAnalysis({
+          maximumCost: $COST
+        })
+        ...
+      ]
+    fix: Implement query cost analysis
+
+  - id: rest-api-key-in-url
+    languages: [javascript, typescript, python, java]
+    severity: CRITICAL
+    message: API key passed in URL parameters
+    pattern-either:
+      - pattern-regex: '\?.*api_key='
+      - pattern-regex: '\&api_key='
+      - pattern: $URL + "?api_key=" + $KEY
+    fix: Pass API keys in headers instead
+
+  - id: missing-rate-limiting
+    languages: [javascript, typescript, python]
+    severity: HIGH
+    message: API endpoint without rate limiting
+    pattern-either:
+      - pattern: |
+          @app.route(...)
+          def $FUNC(...):
+            ...
+      - pattern: |
+          router.get(..., (req, res) => {
+            ...
+          })
+    pattern-not-inside: |
+      rateLimit({
+        ...
+      })
+    fix: Implement rate limiting on all endpoints
+
+  - id: cors-allow-all-origins
+    languages: [javascript, typescript, python]
+    severity: HIGH
+    message: CORS allows all origins
+    pattern-either:
+      - pattern: 'Access-Control-Allow-Origin: *'
+      - pattern: 'cors({ origin: "*" })'
+      - pattern: "'Access-Control-Allow-Origin', '*'"
+    fix: Whitelist specific allowed origins
+
+  - id: jwt-none-algorithm
+    languages: [javascript, typescript, python]
+    severity: CRITICAL
+    message: JWT 'none' algorithm enabled
+    pattern-either:
+      - pattern: 'algorithms: ["none", ...]'
+      - pattern: 'algorithm: "none"'
+      - pattern: verify(..., algorithms=["none"])
+    fix: Never allow 'none' algorithm
+
+  - id: jwt-weak-secret
+    languages: [javascript, typescript, python]
+    severity: CRITICAL
+    message: JWT secret too weak or hardcoded
+    pattern-either:
+      - pattern: 'secret: "..."'
+      - pattern: 'JWT_SECRET = "..."'
+      - pattern: jwt.sign(..., "...")
+    fix: Use strong, environment-based secrets
+
+  - id: sql-injection-api
+    languages: [javascript, typescript, python, java]
+    severity: CRITICAL
+    message: SQL injection vulnerability in API
+    pattern-either:
+      - pattern: |
+          query = "SELECT * FROM users WHERE id = " + $INPUT
+      - pattern: |
+          f"SELECT * FROM {$TABLE} WHERE {$CONDITION}"
+      - pattern: |
+          `SELECT * FROM users WHERE id = ${userId}`
+    fix: Use parameterized queries
+
+  - id: nosql-injection
+    languages: [javascript, typescript]
+    severity: CRITICAL
+    message: NoSQL injection vulnerability
+    pattern-either:
+      - pattern: |
+          collection.find({ $where: $INPUT })
+      - pattern: |
+          { $USER_INPUT }
+      - pattern: |
+          collection.find(JSON.parse($INPUT))
+    fix: Validate and sanitize all inputs
+
+  - id: xxe-vulnerability
+    languages: [javascript, python, java]
+    severity: CRITICAL
+    message: XML External Entity (XXE) vulnerability
+    pattern-either:
+      - pattern: 'resolveExternalEntities: true'
+      - pattern: 'parser.setFeature("http://apache.org/xml/features/disallow-doctype-decl", false)'
+    fix: Disable external entity resolution
+
+  - id: api-versioning-missing
+    languages: [javascript, typescript, python]
+    severity: WARNING
+    message: API endpoint without version
+    pattern-either:
+      - pattern-regex: '@app\.route\("/(?!v\d+/)'
+      - pattern-regex: 'router\.(get|post|put|delete)\("\/(?!v\d+/)'
+    fix: Include version in API paths (/v1/, /v2/, etc)
+
+  - id: grpc-plaintext
+    languages: [python, go, java]
+    severity: HIGH
+    message: gRPC using insecure channel
+    pattern-either:
+      - pattern: grpc.insecure_channel(...)
+      - pattern: grpc.Dial(..., grpc.WithInsecure())
+      - pattern: ManagedChannelBuilder.forAddress(...).usePlaintext()
+    fix: Use TLS for gRPC connections
+
+  - id: graphql-batching-attack
+    languages: [javascript, typescript]
+    severity: HIGH
+    message: GraphQL batching not limited
+    pattern: |
+      new ApolloServer({
+        ...
+      })
+    pattern-not: |
+      new ApolloServer({
+        ...
+        formatResponse: (response, { request }) => {
+          if (request.query.length > $LIMIT) ...
+        }
+      })
+    fix: Limit query batching to prevent DoS
+
+  - id: api-error-info-leak
+    languages: [javascript, typescript, python]
+    severity: MEDIUM
+    message: Detailed error messages exposed to client
+    pattern-either:
+      - pattern: |
+          catch (error) {
+            res.json({ error: error.stack })
+          }
+      - pattern: |
+          except Exception as e:
+            return {"error": str(e)}
+    fix: Return generic error messages in production
+
+  - id: missing-api-authentication
+    languages: [javascript, typescript, python]
+    severity: CRITICAL
+    message: API endpoint without authentication
+    pattern-either:
+      - pattern: |
+          router.post("/api/...", (req, res) => {
+            ...
+          })
+      - pattern: |
+          @app.route("/api/...", methods=["POST"])
+          def $FUNC():
+            ...
+    pattern-not-inside: |
+      authenticate(...)
